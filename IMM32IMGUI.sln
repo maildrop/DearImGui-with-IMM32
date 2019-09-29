@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.29324.140
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IMM32IMGUI", "IMM32IMGUI\IMM32IMGUI.vcxproj", "{D66E8747-B021-4A41-B90F-130482975F5C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4CD0974E-951B-4AA1-B273-6122BC41E910} = {4CD0974E-951B-4AA1-B273-6122BC41E910}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DearImGUI", "DearImGUI\DearImGUI.vcxproj", "{4CD0974E-951B-4AA1-B273-6122BC41E910}"
 EndProject
