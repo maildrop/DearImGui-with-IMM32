@@ -76,6 +76,7 @@ struct ImGUIIMMCommunication{
   std::unique_ptr<char[]> comp_target_utf8;
   std::unique_ptr<char[]> comp_unconv_utf8;
   bool is_open;
+  bool show_ime_candidate_list;
   ImGUIIMMCommunication()
     : comp_conved_utf8( nullptr ),
       comp_target_utf8( nullptr ),
@@ -103,18 +104,20 @@ struct ImGUIIMMCommunication{
                        ImGuiWindowFlags_AlwaysAutoResize |
                        ImGuiWindowFlags_NoSavedSettings ) ){
         
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f) );
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
         ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
         ImGui::PopStyleColor();
-        {
+        if( static_cast<bool>( comp_target_utf8 ) ){
           ImGui::SameLine(0.0f,0.0f);
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
+          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f) );
           ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
           ImGui::PopStyleColor();
         }
-        {
+        if( static_cast<bool>( comp_unconv_utf8 ) ){
           ImGui::SameLine(0.0f,0.0f);
+          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
           ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
+          ImGui::PopStyleColor();
         }
         ImGui::End();
       }
@@ -191,18 +194,32 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     break;
     
   case WM_IME_SETCONTEXT:
-    lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
+    { /* 各ビットを落とす */
+      lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW |
+                  (ISC_SHOWUICANDIDATEWINDOW ) |
+                  (ISC_SHOWUICANDIDATEWINDOW << 1) |
+                  (ISC_SHOWUICANDIDATEWINDOW << 2) |
+                  (ISC_SHOWUICANDIDATEWINDOW << 3) );
+    }
     return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
   case WM_IME_STARTCOMPOSITION:
-    comm.is_open = true;
-    return 0;
-    //return DefSubclassProc ( hWnd , uMsg , wParam , lParam );
+    {
+      /* このメッセージは 「IME」に 変換ウィンドウの表示を要求することを アプリケーションに通知します
+         アプリケーションが 変換文字列の表示を処理する際には、このメッセージを処理しなければいけません。
+         DefWindowProc 関数にこのメッセージを処理させると、デフォルトの IME Window にメッセージが伝わります。
+         （つまり 自前で変換ウィンドウを描画する時には、DefWindowPrc に渡さない）
+       */
+      comm.is_open = true;
+    }
+    return 0; // 
   case WM_IME_ENDCOMPOSITION:
-    comm.is_open = false;
+    {
+      comm.is_open = false;
+    }
     return DefSubclassProc ( hWnd , uMsg , wParam , lParam );
   case WM_IME_COMPOSITION:
     {
-      const HIMC hImc = ImmGetContext( hWnd );
+      HIMC const hImc = ImmGetContext( hWnd );
       if( hImc ){
         if( lParam & GCS_RESULTSTR ){
           comm.comp_conved_utf8 = nullptr;
@@ -306,12 +323,75 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         }
         VERIFY( ImmReleaseContext ( hWnd , hImc ) );
       }
+    } // end of WM_IME_COMPOSITION
+    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+
+  case WM_IME_NOTIFY:
+    {
+      switch( wParam ){
+      case IMN_OPENCANDIDATE:
+        OutputDebugStringW( L"IMN_OPENCANDIDATE\n" );
+        break;
+      case IMN_CHANGECANDIDATE:
+        OutputDebugStringW( L"IMN_CHANGECANDIDATE\n" );
+        {
+          comm.show_ime_candidate_list = true;
+          HIMC const hImc = ImmGetContext( hWnd );
+          if( hImc ){
+            DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
+            if( dwSize ){
+              assert( sizeof(CANDIDATELIST)<=dwSize );
+              if( sizeof(CANDIDATELIST)<=dwSize ){ // dwSize は最低でも struct CANDIDATELIST より大きくなければならない
+                
+                (void)(lParam);
+                std::vector<char> candidatelist( (size_t)dwSize );
+                if( (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )
+                    == ImmGetCandidateListW( hImc , 0 , 
+                                             reinterpret_cast<CANDIDATELIST*>(candidatelist.data()),
+                                             (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )) ){
+                  const CANDIDATELIST* cl = reinterpret_cast<CANDIDATELIST*>( candidatelist.data() );
+                  (void)(cl);
+                  {
+                    wchar_t dbgbuf[1024];
+                    _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
+                                  L"lParam = %lld, dwSize = %d , dwCount = %d , dwSelection = %d\n",
+                                  lParam,
+                                  cl->dwSize ,
+                                  cl->dwCount,
+                                  cl->dwSelection);
+                    OutputDebugStringW( dbgbuf );
+                    for( DWORD i = 0; i < cl->dwCount ; ++i ){
+                      _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
+                                    L"%d%s: %s\n" ,
+                                    i ,(cl->dwSelection == i ? L"*" : L" "),
+                                    (wchar_t*)( candidatelist.data() + cl->dwOffset[i] ) );
+                      OutputDebugStringW( dbgbuf );
+                    }
+                  }
+                }
+              }
+            }
+            VERIFY( ImmReleaseContext ( hWnd , hImc ) );
+          }
+        }
+        break;
+      case IMN_CLOSECANDIDATE:
+        OutputDebugStringW( L"IMN_CLOSECANDIDATE\n" );
+        {
+          comm.show_ime_candidate_list = false;
+
+        }
+        break;
+      default:
+        break;
+      }
     }
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
 
-    /* SDL の IME 変換と競合を防ぐために ここで全部パススルーするようにする */
-  case WM_IME_NOTIFY:
+  case WM_IME_REQUEST:
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+
+
   case WM_INPUTLANGCHANGE:
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
 
