@@ -240,6 +240,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   std::wstring comp_unconveted;
                   size_t begin = 0;
                   size_t end = 0;
+                  // 変換済みを取り出す
                   for( end = begin ; end < attribute_end; ++end ){
                     if( (ATTR_TARGET_CONVERTED == attribute_vec[end] ||
                          ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
@@ -248,7 +249,9 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                       comp_converted.push_back( buf[ end ] );
                     }
                   }
-                  // [begin,end)
+                  // 変換済みの領域[begin,end) 
+
+                  // 変換中の文字列を取り出す
                   for( begin = end ; end < attribute_end; ++end ){
                     if( !(ATTR_TARGET_CONVERTED == attribute_vec[end] ||
                          ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
@@ -257,7 +260,9 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                       comp_target.push_back( buf[end] );
                     }
                   }
-                  // [begin,end)
+                  // 変換中の領域 [begin,end)
+
+                  // 未変換の文字列を取り出す
                   for( ; end < attribute_end ; ++end ){
                     comp_unconveted.push_back( buf[end] );
                   }
@@ -274,7 +279,11 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     OutputDebugStringW( dbgbuf );
                   }
 #endif
-
+                  // それぞれ UTF-8 に変換するためにラムダ関数用意する
+                  /*
+                    std::wstring を std::unique_ptr<char[]> に UTF-8 のnull 終端文字列にして変換する
+                    引数が空文字列の場合は nullptr が入る
+                   */
                   auto toutf8 = [](const std::wstring& arg )->std::unique_ptr<char[]>{
                     if( arg.empty() ){
                       return std::unique_ptr<char[]>( nullptr );
