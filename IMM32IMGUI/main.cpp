@@ -1,6 +1,9 @@
 ﻿#include <iostream>
 #include <memory>
+#include <vector>
 #include <algorithm>
+#include <utility>
+#include <string>
 #include <locale>
 #include <cstdio>
 #include <cassert>
@@ -69,10 +72,15 @@ static int common_control_initialize()
 }
 
 struct ImGUIIMMCommunication{
-  std::unique_ptr<char[]> compstr_utf8;
+  std::unique_ptr<char[]> comp_conved_utf8;
+  std::unique_ptr<char[]> comp_target_utf8;
+  std::unique_ptr<char[]> comp_unconv_utf8;
   bool is_open;
   ImGUIIMMCommunication()
-    : compstr_utf8( nullptr ), is_open( false )
+    : comp_conved_utf8( nullptr ),
+      comp_target_utf8( nullptr ),
+      comp_unconv_utf8( nullptr ),
+      is_open( false )
   {
   }
   ~ImGUIIMMCommunication()
@@ -82,7 +90,7 @@ struct ImGUIIMMCommunication{
   inline void operator()() {
     if( is_open ){
       ImGuiIO& io = ImGui::GetIO(); 
-      ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
+      ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
       ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
       ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
@@ -96,17 +104,17 @@ struct ImGUIIMMCommunication{
                        ImGuiWindowFlags_NoSavedSettings ) ){
         
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f) );
-        ImGui::Text( static_cast<bool>( compstr_utf8 ) ? compstr_utf8.get() : u8"" );
+        ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
         ImGui::PopStyleColor();
         {
           ImGui::SameLine(0.0f,0.0f);
           ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
-          ImGui::Text(u8"") ;
+          ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
           ImGui::PopStyleColor();
         }
         {
           ImGui::SameLine(0.0f,0.0f);
-          ImGui::Text(u8"");
+          ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
         }
         ImGui::End();
       }
@@ -197,7 +205,9 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
       const HIMC hImc = ImmGetContext( hWnd );
       if( hImc ){
         if( lParam & GCS_RESULTSTR ){
-          comm.compstr_utf8 = nullptr; 
+          comm.comp_conved_utf8 = nullptr;
+          comm.comp_target_utf8 = nullptr;
+          comm.comp_unconv_utf8 = nullptr;
         }
         if( lParam & GCS_COMPSTR ){
           /* 一段階目で IME から ワイド文字で文字列をもらってくる */
@@ -218,15 +228,67 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                 const LONG buf_length_in_byte = LONG( buf_length_in_wchar * sizeof( wchar_t ) );
                 const DWORD l = ImmGetCompositionStringW( hImc , GCS_COMPSTR ,
                                                           (LPVOID)(buf.get()) , buf_length_in_byte );
-                // TODO この l の値域チェックしないとだめよ
-                if( l <= (DWORD)buf_length_in_byte ){
-                  buf[l / DWORD(sizeof( wchar_t ))] = L'\0'; // IMEは、戻り値より後ろに未定義な値を詰めてかえしてくるのでちゃんとNULLで閉じる
-                  // 今 buf の中身は wchar_t なので、 utf-8 にして突っ込む必要がある
-                  int require_byte = WideCharToMultiByte( CP_UTF8 , 0, buf.get() , -1 , nullptr , 0, NULL, NULL );
-                  std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
-                  if( require_byte == WideCharToMultiByte( CP_UTF8 , 0 , buf.get() , -1 , utf8buf.get() , require_byte , NULL, NULL ) ){
-                    comm.compstr_utf8.swap( utf8buf );
+
+                const DWORD attribute_size = ImmGetCompositionStringW( hImc , GCS_COMPATTR , NULL, 0 );
+                std::vector<char> attribute_vec( attribute_size , 0 );
+                const DWORD attribute_end =
+                  ImmGetCompositionStringW( hImc , GCS_COMPATTR , attribute_vec.data() , (DWORD)std::size( attribute_vec ));
+                assert( attribute_end == (DWORD)(std::size( attribute_vec ) ) );
+                {
+                  std::wstring comp_converted;
+                  std::wstring comp_target;
+                  std::wstring comp_unconveted;
+                  size_t begin = 0;
+                  size_t end = 0;
+                  for( end = begin ; end < attribute_end; ++end ){
+                    if( (ATTR_TARGET_CONVERTED == attribute_vec[end] ||
+                         ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
+                      break;
+                    }else{
+                      comp_converted.push_back( buf[ end ] );
+                    }
                   }
+                  // [begin,end)
+                  for( begin = end ; end < attribute_end; ++end ){
+                    if( !(ATTR_TARGET_CONVERTED == attribute_vec[end] ||
+                         ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
+                      break;
+                    }else{
+                      comp_target.push_back( buf[end] );
+                    }
+                  }
+                  // [begin,end)
+                  for( ; end < attribute_end ; ++end ){
+                    comp_unconveted.push_back( buf[end] );
+                  }
+
+#if 0
+                  {
+                    wchar_t dbgbuf[1024];
+                    _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
+                                  L"attribute_size = %d \"%s[%s]%s\"\n",
+                                  attribute_size ,
+                                  comp_converted.c_str() ,
+                                  comp_target.c_str() ,
+                                  comp_unconveted.c_str() );
+                    OutputDebugStringW( dbgbuf );
+                  }
+#endif
+
+                  auto toutf8 = [](const std::wstring& arg )->std::unique_ptr<char[]>{
+                    if( arg.empty() ){
+                      return std::unique_ptr<char[]>( nullptr );
+                    }
+                    const int require_byte = WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1 , nullptr , 0 , NULL , NULL );
+                    std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
+                    if( require_byte != WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1, utf8buf.get(), require_byte , NULL , NULL ) ){
+                      utf8buf.reset( nullptr );
+                    }
+                    return utf8buf;
+                  };
+                  comm.comp_conved_utf8 = toutf8( comp_converted );
+                  comm.comp_target_utf8 = toutf8( comp_target ) ;
+                  comm.comp_unconv_utf8 = toutf8( comp_unconveted );
                 }
               }
             }
@@ -419,9 +481,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	SDL_GL_DeleteContext(gl_context);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-
-	return 0;
-
 
 	return EXIT_SUCCESS;
 }
