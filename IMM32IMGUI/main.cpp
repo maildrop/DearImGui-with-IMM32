@@ -1,9 +1,15 @@
-#include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl2.h"
-#include <iostream>
+ï»¿#include <iostream>
+#include <memory>
+#include <algorithm>
+#include <locale>
 #include <cstdio>
 #include <cassert>
+
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl2.h"
+
 #include <SDL.h>
 #include <SDL_syswm.h>
 #include <SDL_opengl.h>
@@ -24,12 +30,14 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 # endif /* defined( NDEBUG ) */
 #endif /* !defined( VERIFY ) */
 
-/** ƒRƒ‚ƒ“ƒRƒ“ƒgƒ[ƒ‹‚Ì‰Šú‰» */
+/** ã‚³ãƒ¢ãƒ³ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«ã®åˆæœŸåŒ– */
+static int common_control_initialize();
+
 static int common_control_initialize()
 {
 	// 
-	// ¡ InitCommonControls() ‚ğŒÄ‚Ño‚µ‚Ä‚¢‚é‚Ì‚ÅA Comctl32.dll ‚ÍˆÃ–Ù“I‚ÉƒŠƒ“ƒN‚µ‚Ä‚¢‚é
-	// ‚µ‚©‚µ‚È‚ª‚çA ‹‚ß‚ç‚ê‚Ä‚¢‚é‚Ì‚Í InitCommonControlsEx ‚Å‚ ‚é‚Ì‚ÅA‚»‚¿‚ç‚ª‘¶İ‚µ‚Ä‚¢‚ê‚Î‚»‚ê‚ğg‚¤ 
+	// ä»Š InitCommonControls() ã‚’å‘¼ã³å‡ºã—ã¦ã„ã‚‹ã®ã§ã€ Comctl32.dll ã¯æš—é»™çš„ã«ãƒªãƒ³ã‚¯ã—ã¦ã„ã‚‹
+	// ã—ã‹ã—ãªãŒã‚‰ã€ æ±‚ã‚ã‚‰ã‚Œã¦ã„ã‚‹ã®ã¯ InitCommonControlsEx ã§ã‚ã‚‹ã®ã§ã€ãã¡ã‚‰ãŒå­˜åœ¨ã—ã¦ã„ã‚Œã°ãã‚Œã‚’ä½¿ã† 
 	HMODULE comctl32 = nullptr;
 	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, L"Comctl32.dll", &comctl32)) {
 		return EXIT_FAILURE;
@@ -37,10 +45,10 @@ static int common_control_initialize()
 
 	assert(comctl32 != nullptr);
 	if (comctl32) {
-		{ // InitCommonControlsEx ‚ğg—p‚µ‚Ä‰Šú‰»‚ğ‚İ‚é
+		{ // InitCommonControlsEx ã‚’ä½¿ç”¨ã—ã¦åˆæœŸåŒ–ã‚’è©¦ã¿ã‚‹
 			typename std::add_pointer< decltype(InitCommonControlsEx) >::type lpfnInitCommonControlsEx =
 				reinterpret_cast<typename std::add_pointer< decltype(InitCommonControlsEx) >::type>(GetProcAddress(comctl32, "InitCommonControlsEx"));
-			// InitCommonControlsEx ‚ªŒ©‚Â‚©‚Á‚½ê‡
+			// InitCommonControlsEx ãŒè¦‹ã¤ã‹ã£ãŸå ´åˆ
 			if (lpfnInitCommonControlsEx) {
 				const INITCOMMONCONTROLSEX initcommoncontrolsex = { sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES };
 				if (!lpfnInitCommonControlsEx(&initcommoncontrolsex)) {
@@ -51,7 +59,7 @@ static int common_control_initialize()
 				return 0;
 			}
 		}
-		{ //InitCommonControls ‚ğg—p‚µ‚Ä‰Šú‰»‚ğ‚İ‚é
+		{ //InitCommonControls ã‚’ä½¿ç”¨ã—ã¦åˆæœŸåŒ–ã‚’è©¦ã¿ã‚‹
 			InitCommonControls();
 			OutputDebugStringW(L"initCommonControls Enable\n");
 			return 0;
@@ -60,13 +68,200 @@ static int common_control_initialize()
 	return 1;
 }
 
+struct ImGUIIMMCommunication{
+  std::unique_ptr<char[]> compstr_utf8;
+  bool is_open;
+  ImGUIIMMCommunication()
+    : compstr_utf8( nullptr ), is_open( false )
+  {
+  }
+  ~ImGUIIMMCommunication()
+  {
+  }
+
+  inline void operator()() {
+    if( is_open ){
+      ImGuiIO& io = ImGui::GetIO(); 
+      ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
+      ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
+      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
+      
+      if (ImGui::Begin("IME Composition Window", &(this->is_open),
+                       ImGuiWindowFlags_Tooltip|
+                       ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoDecoration | 
+                       ImGuiWindowFlags_NoInputs |
+                       ImGuiWindowFlags_AlwaysAutoResize |
+                       ImGuiWindowFlags_NoSavedSettings ) ){
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f) );
+        ImGui::Text( static_cast<bool>( compstr_utf8 ) ? compstr_utf8.get() : u8"" );
+        ImGui::PopStyleColor();
+        {
+          ImGui::SameLine(0.0f,0.0f);
+          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f) );
+          ImGui::Text(u8"") ;
+          ImGui::PopStyleColor();
+        }
+        {
+          ImGui::SameLine(0.0f,0.0f);
+          ImGui::Text(u8"");
+        }
+        ImGui::End();
+      }
+      ImGui::PopStyleVar();
+    }
+    return;
+  }
+  
+private:
+  static LRESULT
+  WINAPI imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
+                                  UINT_PTR uIdSubclass , DWORD_PTR dwRefData );
+  static LRESULT
+  imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
+                                            UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm);
+public:
+  inline BOOL
+  subclassify( HWND hWnd )
+  {
+    assert( IsWindow( hWnd ) );
+    if(! IsWindow( hWnd ) ){
+      return FALSE;
+    }
+    return ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
+                                reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
+                                reinterpret_cast<DWORD_PTR>(this) );
+  }
+  inline BOOL
+  subclassify( SDL_Window* window )
+  {
+    SDL_SysWMinfo info{};
+    SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(window, &info)) {
+      assert(IsWindow(info.info.win.window));
+      return this->subclassify( info.info.win.window );
+    }
+    return FALSE;
+  }
+};
+
+LRESULT
+ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
+                                                       UINT_PTR uIdSubclass , DWORD_PTR dwRefData )
+{
+  switch( uMsg ){
+  case WM_DESTROY:
+    {
+      if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
+        assert(!"RemoveWindowSubclass() failed\n");
+      }
+    }
+    break;
+  default:
+    if( dwRefData ){
+      return imm_communication_subClassProc_implement ( hWnd, uMsg , wParam , lParam,
+                                                        uIdSubclass ,*reinterpret_cast<ImGUIIMMCommunication*>( dwRefData ) );
+    }
+  }
+  return ::DefSubclassProc ( hWnd , uMsg , wParam , lParam );
+}
+
+LRESULT
+ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
+                                                                 UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm )
+{
+  switch( uMsg ){
+  case WM_KEYDOWN:
+  case WM_KEYUP:
+  case WM_SYSKEYDOWN:
+  case WM_SYSKEYUP:
+    if( comm.is_open ){
+      return 0;
+    }
+    break;
+    
+  case WM_IME_SETCONTEXT:
+    lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW;
+    return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
+  case WM_IME_STARTCOMPOSITION:
+    comm.is_open = true;
+    return 0;
+    //return DefSubclassProc ( hWnd , uMsg , wParam , lParam );
+  case WM_IME_ENDCOMPOSITION:
+    comm.is_open = false;
+    return DefSubclassProc ( hWnd , uMsg , wParam , lParam );
+  case WM_IME_COMPOSITION:
+    {
+      const HIMC hImc = ImmGetContext( hWnd );
+      if( hImc ){
+        if( lParam & GCS_RESULTSTR ){
+          comm.compstr_utf8 = nullptr; 
+        }
+        if( lParam & GCS_COMPSTR ){
+          /* ä¸€æ®µéšç›®ã§ IME ã‹ã‚‰ ãƒ¯ã‚¤ãƒ‰æ–‡å­—ã§æ–‡å­—åˆ—ã‚’ã‚‚ã‚‰ã£ã¦ãã‚‹ */
+          /* ã“ã‚Œã¯ãƒã‚¤ãƒˆå˜ä½ã§ã‚„ã‚Šã¨ã‚Šã™ã‚‹ã®ã§ã€æ³¨æ„ */
+          const DWORD compstr_length_in_byte = ImmGetCompositionStringW( hImc , GCS_COMPSTR , nullptr , 0 ) ;
+          switch( compstr_length_in_byte ){
+          case IMM_ERROR_NODATA:
+          case IMM_ERROR_GENERAL:
+            break;
+          default:
+            {
+              /* ãƒã‚¤ãƒˆå˜ä½ã§ã‚‚ã‚‰ã£ã¦ããŸã®ã§ã€wchar_t å˜ä½ã«ç›´ã—ã¦ã€ nullæ–‡å­—ã®ä½™è£•ã‚’åŠ ãˆã¦ãƒãƒƒãƒ•ã‚¡ã‚’ç”¨æ„ã™ã‚‹ */
+              size_t const buf_length_in_wchar = ( size_t(compstr_length_in_byte) / sizeof( wchar_t ) ) + 1 ;
+              assert( 0 < buf_length_in_wchar );
+              std::unique_ptr<wchar_t[]> buf{ new wchar_t[buf_length_in_wchar] };
+              if( buf ){
+                //std::fill( &buf[0] , &buf[buf_length_in_wchar-1] , L'\0' );
+                const LONG buf_length_in_byte = LONG( buf_length_in_wchar * sizeof( wchar_t ) );
+                const DWORD l = ImmGetCompositionStringW( hImc , GCS_COMPSTR ,
+                                                          (LPVOID)(buf.get()) , buf_length_in_byte );
+                // TODO ã“ã® l ã®å€¤åŸŸãƒã‚§ãƒƒã‚¯ã—ãªã„ã¨ã ã‚ã‚ˆ
+                if( l <= (DWORD)buf_length_in_byte ){
+                  buf[l / DWORD(sizeof( wchar_t ))] = L'\0'; // IMEã¯ã€æˆ»ã‚Šå€¤ã‚ˆã‚Šå¾Œã‚ã«æœªå®šç¾©ãªå€¤ã‚’è©°ã‚ã¦ã‹ãˆã—ã¦ãã‚‹ã®ã§ã¡ã‚ƒã‚“ã¨NULLã§é–‰ã˜ã‚‹
+                  // ä»Š buf ã®ä¸­èº«ã¯ wchar_t ãªã®ã§ã€ utf-8 ã«ã—ã¦çªã£è¾¼ã‚€å¿…è¦ãŒã‚ã‚‹
+                  int require_byte = WideCharToMultiByte( CP_UTF8 , 0, buf.get() , -1 , nullptr , 0, NULL, NULL );
+                  std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
+                  if( require_byte == WideCharToMultiByte( CP_UTF8 , 0 , buf.get() , -1 , utf8buf.get() , require_byte , NULL, NULL ) ){
+                    comm.compstr_utf8.swap( utf8buf );
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+        VERIFY( ImmReleaseContext ( hWnd , hImc ) );
+      }
+    }
+    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+
+    /* SDL ã® IME å¤‰æ›ã¨ç«¶åˆã‚’é˜²ããŸã‚ã« ã“ã“ã§å…¨éƒ¨ãƒ‘ã‚¹ã‚¹ãƒ«ãƒ¼ã™ã‚‹ã‚ˆã†ã«ã™ã‚‹ */
+  case WM_IME_NOTIFY:
+    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+  case WM_INPUTLANGCHANGE:
+    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+
+  default:
+    break;
+  }
+  return ::DefSubclassProc ( hWnd , uMsg, wParam , lParam );
+}
+
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE,
 	_In_ LPWSTR    lpCmdLine,
 	_In_ int       nCmdShow)
 {
-	UNREFERENCED_PARAMETER(lpCmdLine);
-
+  UNREFERENCED_PARAMETER(lpCmdLine);
+  // snprintf ç­‰ãŒ wide-multibyte å¤‰æ›ã§ä½¿ã†ã®ã§ãƒ­ãƒ¼ã‚±ãƒ«ã®è¨­å®šã¯å¿…è¦
+  // ãŸã ã— windows ã§ã¯ mingw ã® gcc ã¯ã€ãƒ­ãƒ¼ã‚±ãƒ«ãŒ Cãƒ­ãƒ¼ã‚±ãƒ«ã—ã‹å—ã‘ä»˜ã‘ãªã„ã®ã§ã“ã‚Œã¯ã€Visual C++ ãã‚‰ã„ã—ã‹ä½¿ãˆãªã„
+  // (mingw ã® ä»•æ§˜ã®ãƒŸã‚¹ãªã®ã§ã€å½“æ–¹ã§ã¯ä¿®æ­£ã§ãã¾ã›ã‚“ï¼‰
+  std::locale::global( std::locale("") ); 
+    
 	common_control_initialize();
 
 	// Setup SDL
@@ -115,8 +310,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	//
 
 	{
-		// ƒtƒHƒ“ƒg‚Ìw’è
-		// ƒtƒHƒ“ƒg‚Ì‡¬‚ğs‚¢‚½‚¢‚Ì‚Å MergeMode ‚ğ—LŒø‚É‚·‚é
+		// ãƒ•ã‚©ãƒ³ãƒˆã®æŒ‡å®š
+		// ãƒ•ã‚©ãƒ³ãƒˆã®åˆæˆã‚’è¡Œã„ãŸã„ã®ã§ MergeMode ã‚’æœ‰åŠ¹ã«ã™ã‚‹
 		const ImFontConfig config = []() {
 			ImFontConfig config{};
 			config.MergeMode = true;
@@ -141,95 +336,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 
-	// IME ‚ÌƒƒbƒZ[ƒW‚ğæ“¾‚µ‚Ä‚²‚É‚å‚²‚É‚å‚·‚é‚½‚ß‚ÉŠæ’£‚é
-	/*
-	   SDL ‚Í Widget ‚ª–³‚¢‚Ì‚Å•ÏŠ·ƒEƒBƒ“ƒhƒE‚ÌˆÊ’u‚ğ’m‚é‚±‚Æ‚ªo—ˆ‚È‚¢‚µAImGUI ‚Ì IME À‘•‚ÍA’†“r”¼’[‚É‚È‚Á‚Ä‚¢‚é
-	   ‚±‚Ì‚½‚ß‚à‚µ‚â‚é‚Ì‚Å‚ ‚ê‚ÎASetWindowSubclass ‚ğg‚¤•û–@‚Å WM_IME_* ‚ğSDL ‚©‚ç•ª—£‚·‚é•û–@‚ª—Ç‚¢‹C‚ª‚·‚é
-
-	   SDL_SetWindowsMessageHook ‚ÍAƒƒbƒZ[ƒWƒ|ƒ“ƒvã‚Åˆ—‚ğ‚·‚é‚Ì‚ÅAIME‚©‚ç‚ÌSendMessage ‚Å‘—o‚³‚ê‚éƒƒbƒZ[ƒW‚ğ
-	   æ“¾o—ˆ‚È‚¢B©ƒXƒŒƒbƒh‚©‚çSendMessage‚Å‘—o‚³‚ê‚éƒƒbƒZ[ƒW‚ÍA’¼ÚƒEƒBƒ“ƒhƒEƒvƒƒV[ƒWƒƒ‚É‘—‚ç‚ê‚é‚µA
-	   ƒƒbƒZ[ƒWƒ{ƒbƒNƒX‚âƒVƒXƒeƒ€ƒEƒBƒ“ƒhƒE‚ğ‚Â‚©‚ñ‚¾‚È‚Ç‚ÍAƒVƒXƒeƒ€’ñ‹Ÿ‚ÌƒƒbƒZ[ƒWƒ|ƒ“ƒv‚ª“®ì‚µ‚ÄAƒEƒBƒ“ƒhƒEƒvƒƒV[ƒWƒƒ‚æ‚èæ‚µ‚©
-	   “®ì‚ª•ÛØ‚Å‚«‚È‚¢B
-	   ‚±‚Ì‚½‚ß‚ÉAƒƒbƒZ[ƒWƒ|ƒ“ƒvã‚Ìˆ—‚ÍM—Š«‚ª–³‚¢
-	   ‚Ô‚Á‚¿‚á‚¯ TranslateAccelerator ‚ğŒÄ‚Ño‚·‚©ŒÄ‚Ño‚³‚È‚¢‚©‚®‚ç‚¢‚É‚µ‚©–ğ‚É‚Í—§‚½‚È‚¢‚µA
-	   ‚»‚ê‚ğ‚·‚é‚É‚ÍA
-
-	   if( !TranslateAccelerator( hwnd , haccel , &msg ) ){
-		 TranslateMessage( &msg );
-		 DispatchMessage( &msg );
-	   }
-
-	   ‚Ì‚æ‚¤‚ÉTranslateAccelerator() ‚ª true ‚ğ•Ô‚µ‚½‚É‚ÍATranslateMessage DispatchMessage ‚ğŒÄ‚Ño‚·‚×‚«‚Å‚Í–³‚¢
-	   ‚»‚µ‚ÄA SDL_SetWindowsMessageHook ‚Í‚»‚ÌƒƒbƒZ[ƒW‚ğŒã‚ë‚É‘—‚é‚Ì‚ğ‘j~‚·‚é‚Æ‚¢‚¤•û–@‚ª–³‚¢B
-
-	   SDL_SetWindowsMessageHook ‚É‚ÍİŒvã‚æ‚ë‚µ‚­‚È‚¢“_‚ª‘½”‚ ‚éBiŒ‹‹ÇƒfƒoƒbƒO—p‚ÉƒEƒBƒ“ƒhƒEƒƒbƒZ[ƒW‚ÌŠm”F‚ğs‚¤‚µ‚©‚Å‚«‚È‚¢j
-	   d—lƒoƒO‚ğo‚µ‚â‚·‚­‚È‚é‚Ì‚Å SDL_SetWindowsMessageHook ŠÖ”‚Í‚ ‚Ü‚èƒIƒXƒXƒo—ˆ‚È‚¢‚Æ‚¢‚¤‚Ì‚ª–Ú‰º‚ÌŒ‹˜_
-	 */
-#if 1
-	 // SetWindowSubclass ‚ğg‚¤•û–@
-	{ // HWND ‚Ìæ“¾ http://wiki.libsdl.org/SDL_GetWindowWMInfo
-		SDL_SysWMinfo info{};
-		SDL_VERSION(&info.version);
-		if (SDL_GetWindowWMInfo(window, &info)) {
-			assert(IsWindow(info.info.win.window));
-			SUBCLASSPROC subclassProc =
-				[](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
-				switch (uMsg) {
-				case WM_IME_STARTCOMPOSITION:
-				{
-					HIMC hImc = ImmGetContext(reinterpret_cast<HWND>(hwnd));
-					if (hImc) {
-						LOGFONTW logFont = { 0 };
-						logFont.lfHeight = -((LONG)(ImGui::GetFontSize())); // pixel
-						logFont.lfWidth = 0;
-
-						wcscpy_s(logFont.lfFaceName, L"‚l‚r ƒSƒVƒbƒN"); // ‰Šú’l‚Í "System" ‚¾‚¯‚ê‚Ç‚àA‚±‚ê‚ÍƒtƒHƒ“ƒg‚ÌƒTƒCƒY‚ªŒÅ’è‚É‚È‚é‚Ì‚ÅA“KØ‚È’l‚ğ—^‚¦‚é 
-						if (!ImmSetCompositionFontW(hImc, &logFont)) {
-							OutputDebugStringA("ImmSetCompositionFontW failed\n");
-						}
-						ImmReleaseContext(reinterpret_cast<HWND>(hwnd), hImc);
-					}
-				}
-				break;
-				case WM_DESTROY:
-				{
-					if (!RemoveWindowSubclass(hwnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
-						assert(!"RemoveWindowSubclass() failed\n");
-					}
-				}
-				break;
-				default:
-					break;
-				}
-				return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-			};
-
-			if (!SetWindowSubclass(info.info.win.window, subclassProc, reinterpret_cast<UINT_PTR>(subclassProc), NULL)) {
-				assert(!"SetWindowSubclass() failed");
-			}
-		}
-	}
-#else
-	 // SDL ‚Ì Windows MessageHook ‚ÍA‚½‚¾ˆê‚Â‚¾‚¯İ’è‚Å‚«‚é
-	SDL_SetWindowsMessageHook([](void* userdata, void* hWnd, unsigned int message, Uint64 wParam, Sint64 lParam) {
-		if (WM_IME_STARTCOMPOSITION == message) {
-			// OutputDebugStringA( "WM_IME_STARTCOMPOSITION\n" );
-			HIMC hImc = ImmGetContext(reinterpret_cast<HWND>(hWnd));
-			if (hImc) {
-				LOGFONTW logFont = { 0 };
-				if (ImmGetCompositionFontW(hImc, &logFont)) {
-					logFont.lfHeight = -(ImGui::GetFontSize()); // pixel
-					logFont.lfWidth = 0;
-					wcscpy(logFont.lfFaceName, L"‚l‚r ƒSƒVƒbƒN"); // ‰Šú’l‚Í "System" ‚¾‚¯‚ê‚Ç‚àA‚±‚ê‚ÍƒtƒHƒ“ƒg‚ÌƒTƒCƒY‚ªŒÅ’è‚É‚È‚é‚Ì‚ÅA“KØ‚È’l‚ğ—^‚¦‚é 
-					if (!ImmSetCompositionFontW(hImc, &logFont)) {
-						OutputDebugStringA("ImmSetCompositionFontW Failed \n");
-					}
-				}
-				ImmReleaseContext(reinterpret_cast<HWND>(hWnd), hImc);
-			}
-		}
-		}, nullptr);
-#endif
+    ImGUIIMMCommunication imguiIMMCommunication{};
+    VERIFY( imguiIMMCommunication.subclassify( window ) );
 
 	// Main loop
 	bool done = false;
@@ -290,6 +398,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			ImGui::End();
 		}
 
+
+        imguiIMMCommunication(); // IMM popup ã®æç”»
+        
 		// Rendering
 		ImGui::Render();
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
