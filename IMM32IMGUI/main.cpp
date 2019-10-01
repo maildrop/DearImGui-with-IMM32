@@ -1,13 +1,4 @@
 ﻿#include <iostream>
-#include <memory>
-#include <vector>
-#include <algorithm>
-#include <utility>
-#include <string>
-#include <locale>
-#include <type_traits>
-#include <cstdio>
-#include <cassert>
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -21,10 +12,12 @@
 #include <Windows.h>
 #include <commctrl.h>
 
-#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#pragma comment(lib, "comctl32.lib" )
+#if defined( _WIN32 )
+#include "imgui_imm32_onthespot.h"
+#endif /* defined( _WIN32 ) */
 
+#include <locale>
+#include <cassert>
 #if !defined( VERIFY ) 
 # if defined( NDEBUG )
 #  define VERIFY( exp ) do{ exp ; }while( 0 )
@@ -38,462 +31,37 @@ static int common_control_initialize();
 
 static int common_control_initialize()
 {
-	// 
-	// 今 InitCommonControls() を呼び出しているので、 Comctl32.dll は暗黙的にリンクしている
-	// しかしながら、 求められているのは InitCommonControlsEx であるので、そちらが存在していればそれを使う 
-	HMODULE comctl32 = nullptr;
-	if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, L"Comctl32.dll", &comctl32)) {
-		return EXIT_FAILURE;
-	}
-
-	assert(comctl32 != nullptr);
-	if (comctl32) {
-		{ // InitCommonControlsEx を使用して初期化を試みる
-			typename std::add_pointer< decltype(InitCommonControlsEx) >::type lpfnInitCommonControlsEx =
-				reinterpret_cast<typename std::add_pointer< decltype(InitCommonControlsEx) >::type>(GetProcAddress(comctl32, "InitCommonControlsEx"));
-			// InitCommonControlsEx が見つかった場合
-			if (lpfnInitCommonControlsEx) {
-				const INITCOMMONCONTROLSEX initcommoncontrolsex = { sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES };
-				if (!lpfnInitCommonControlsEx(&initcommoncontrolsex)) {
-					assert(!" InitCommonControlsEx(&initcommoncontrolsex) ");
-					return EXIT_FAILURE;
-				}
-				OutputDebugStringW(L"initCommonControlsEx Enable\n");
-				return 0;
-			}
-		}
-		{ //InitCommonControls を使用して初期化を試みる
-			InitCommonControls();
-			OutputDebugStringW(L"initCommonControls Enable\n");
-			return 0;
-		}
-	}
-	return 1;
-}
-
-struct ImGUIIMMCommunication{
-
-  struct IMMCandidateList{
-    std::vector<std::string> list_utf8;
-    std::vector<std::string>::size_type selection;
-
-    IMMCandidateList()
-      : list_utf8{}, selection(0){
-    }
-    IMMCandidateList( const IMMCandidateList& rhv ) = default;
-    IMMCandidateList( IMMCandidateList&& rhv ) noexcept
-      : list_utf8() , selection( 0 ){
-      *this = std::move( rhv );
-    }
-    
-    ~IMMCandidateList(){
-    }
-
-    IMMCandidateList&
-    operator=( const IMMCandidateList& rhv ) = default;
-   
-    IMMCandidateList&
-    operator=( IMMCandidateList&& rhv ) noexcept
-    {
-      if( this == &rhv ){
-        return *this;
-      }
-      std::swap( list_utf8 , rhv.list_utf8 );
-      std::swap( selection , rhv.selection );
-      return *this;
-    }
-    
-    static IMMCandidateList cocreate( const CANDIDATELIST* const src , const size_t src_size);
-  };
-  
-  bool is_open;
-  std::unique_ptr<char[]> comp_conved_utf8;
-  std::unique_ptr<char[]> comp_target_utf8;
-  std::unique_ptr<char[]> comp_unconv_utf8;
-  bool show_ime_candidate_list;
-  IMMCandidateList candidate_list;
-  
-  ImGUIIMMCommunication()
-    : is_open( false ),
-      comp_conved_utf8( nullptr ),
-      comp_target_utf8( nullptr ),
-      comp_unconv_utf8( nullptr ),
-      show_ime_candidate_list( false ),
-      candidate_list()
-  {
+  // 
+  // 今 InitCommonControls() を呼び出しているので、 Comctl32.dll は暗黙的にリンクしている
+  // しかしながら、 求められているのは InitCommonControlsEx であるので、そちらが存在していればそれを使う 
+  HMODULE comctl32 = nullptr;
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, L"Comctl32.dll", &comctl32)) {
+    return EXIT_FAILURE;
   }
 
-  ~ImGUIIMMCommunication()
-  {
-  }
-
-  inline void operator()() {
-    if( is_open ){
-      ImGuiIO& io = ImGui::GetIO(); 
-      ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
-      ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
-      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
-      
-      if (ImGui::Begin("IME Composition Window", &(this->is_open),
-                       ImGuiWindowFlags_Tooltip|
-                       ImGuiWindowFlags_NoNav |
-                       ImGuiWindowFlags_NoDecoration | 
-                       ImGuiWindowFlags_NoInputs |
-                       ImGuiWindowFlags_AlwaysAutoResize |
-                       ImGuiWindowFlags_NoSavedSettings ) ){
-        
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
-        ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
-        ImGui::PopStyleColor();
-        if( static_cast<bool>( comp_target_utf8 ) ){
-          ImGui::SameLine(0.0f,0.0f);
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f) );
-          ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
-          ImGui::PopStyleColor();
+  assert(comctl32 != nullptr);
+  if (comctl32) {
+    { // InitCommonControlsEx を使用して初期化を試みる
+      typename std::add_pointer< decltype(InitCommonControlsEx) >::type lpfnInitCommonControlsEx =
+        reinterpret_cast<typename std::add_pointer< decltype(InitCommonControlsEx) >::type>(GetProcAddress(comctl32, "InitCommonControlsEx"));
+      // InitCommonControlsEx が見つかった場合
+      if (lpfnInitCommonControlsEx) {
+        const INITCOMMONCONTROLSEX initcommoncontrolsex = { sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES };
+        if (!lpfnInitCommonControlsEx(&initcommoncontrolsex)) {
+          assert(!" InitCommonControlsEx(&initcommoncontrolsex) ");
+          return EXIT_FAILURE;
         }
-        if( static_cast<bool>( comp_unconv_utf8 ) ){
-          ImGui::SameLine(0.0f,0.0f);
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
-          ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
-          ImGui::PopStyleColor();
-        }
-        ImGui::End();
-      }
-      ImGui::PopStyleVar();
-      if( show_ime_candidate_list ){
-        if (ImGui::Begin("##IME Candidate Window", nullptr ,
-                         ImGuiWindowFlags_Tooltip|
-                         ImGuiWindowFlags_NoNav |
-                         ImGuiWindowFlags_NoInputs |
-                         ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoSavedSettings ) ){
-          {
-            std::vector<const char*> listbox_items ={};
-            std::for_each( std::begin( candidate_list.list_utf8 ) , std::end( candidate_list.list_utf8 ),
-                           [&](auto &item){
-                             listbox_items.push_back( item.c_str() );
-                           });
-            static int listbox_item_current = 0;
-            listbox_item_current = (int)candidate_list.selection;
-            
-            ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
-                            listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
-                            std::min<int>( 9 , static_cast<int>(std::size( listbox_items ))));
-          }
-          ImGui::End();
-        }
+        OutputDebugStringW(L"initCommonControlsEx Enable\n");
+        return 0;
       }
     }
-    return;
-  }
-  
-private:
-  static LRESULT
-  WINAPI imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
-                                  UINT_PTR uIdSubclass , DWORD_PTR dwRefData );
-  static LRESULT
-  imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
-                                            UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm);
-public:
-  inline BOOL
-  subclassify( HWND hWnd )
-  {
-    assert( IsWindow( hWnd ) );
-    if(! IsWindow( hWnd ) ){
-      return FALSE;
-    }
-    return ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
-                                reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
-                                reinterpret_cast<DWORD_PTR>(this) );
-  }
-  inline BOOL
-  subclassify( SDL_Window* window )
-  {
-    SDL_SysWMinfo info{};
-    SDL_VERSION(&info.version);
-    if (SDL_GetWindowWMInfo(window, &info)) {
-      assert(IsWindow(info.info.win.window));
-      return this->subclassify( info.info.win.window );
-    }
-    return FALSE;
-  }
-};
-
-ImGUIIMMCommunication::IMMCandidateList
-ImGUIIMMCommunication::IMMCandidateList::cocreate( const CANDIDATELIST* const src , const size_t src_size)
-{
-  assert( nullptr != src );
-  assert( sizeof( CANDIDATELIST ) <= src->dwSize );
-  assert( src->dwSelection < src->dwCount  );
-  
-  IMMCandidateList dst{};
-  if(! (sizeof( CANDIDATELIST) < src->dwSize )){
-    return dst;
-  }
-  if(! (src->dwSelection < src->dwCount ) ){
-    return dst;
-  }
-  const char* const baseaddr = reinterpret_cast< const char* >( src );
-  
-  for( size_t i = 0; i < src->dwCount ; ++i ){
-    const wchar_t * const item = reinterpret_cast<const wchar_t*>( baseaddr + src->dwOffset[i] );
-    const int require_byte = WideCharToMultiByte( CP_UTF8 , 0 , item , -1 , nullptr , 0 , NULL , NULL );
-    if( 0 < require_byte ){
-      std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
-      if( require_byte == WideCharToMultiByte( CP_UTF8 , 0 , item , -1 , utf8buf.get() , require_byte , NULL, NULL ) ){
-        dst.list_utf8.emplace_back( utf8buf.get() );
-        continue;
-      }
-    }
-    dst.list_utf8.emplace_back( u8"??" );
-  }
-  dst.selection = src->dwSelection;
-  return dst;
-}
-
-LRESULT
-ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
-                                                       UINT_PTR uIdSubclass , DWORD_PTR dwRefData )
-{
-  switch( uMsg ){
-  case WM_DESTROY:
-    {
-      if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
-        assert(!"RemoveWindowSubclass() failed\n");
-      }
-    }
-    break;
-  default:
-    if( dwRefData ){
-      return imm_communication_subClassProc_implement ( hWnd, uMsg , wParam , lParam,
-                                                        uIdSubclass ,*reinterpret_cast<ImGUIIMMCommunication*>( dwRefData ) );
-    }
-  }
-  return ::DefSubclassProc ( hWnd , uMsg , wParam , lParam );
-}
-
-LRESULT
-ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
-                                                                 UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm )
-{
-  switch( uMsg ){
-  case WM_KEYDOWN:
-  case WM_KEYUP:
-  case WM_SYSKEYDOWN:
-  case WM_SYSKEYUP:
-    if( comm.is_open ){
+    { //InitCommonControls を使用して初期化を試みる
+      InitCommonControls();
+      OutputDebugStringW(L"initCommonControls Enable\n");
       return 0;
     }
-    break;
-    
-  case WM_IME_SETCONTEXT:
-    { /* 各ビットを落とす */
-      lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW |
-                  (ISC_SHOWUICANDIDATEWINDOW ) |
-                  (ISC_SHOWUICANDIDATEWINDOW << 1) |
-                  (ISC_SHOWUICANDIDATEWINDOW << 2) |
-                  (ISC_SHOWUICANDIDATEWINDOW << 3) );
-    }
-    return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
-  case WM_IME_STARTCOMPOSITION:
-    {
-      /* このメッセージは 「IME」に 変換ウィンドウの表示を要求することを アプリケーションに通知します
-         アプリケーションが 変換文字列の表示を処理する際には、このメッセージを処理しなければいけません。
-         DefWindowProc 関数にこのメッセージを処理させると、デフォルトの IME Window にメッセージが伝わります。
-         （つまり 自前で変換ウィンドウを描画する時には、DefWindowPrc に渡さない）
-       */
-      comm.is_open = true;
-    }
-    return 0; // 
-  case WM_IME_ENDCOMPOSITION:
-    {
-      comm.is_open = false;
-    }
-    return DefSubclassProc ( hWnd , uMsg , wParam , lParam );
-  case WM_IME_COMPOSITION:
-    {
-      HIMC const hImc = ImmGetContext( hWnd );
-      if( hImc ){
-        if( lParam & GCS_RESULTSTR ){
-          comm.comp_conved_utf8 = nullptr;
-          comm.comp_target_utf8 = nullptr;
-          comm.comp_unconv_utf8 = nullptr;
-        }
-        if( lParam & GCS_COMPSTR ){
-          /* 一段階目で IME から ワイド文字で文字列をもらってくる */
-          /* これはバイト単位でやりとりするので、注意 */
-          const DWORD compstr_length_in_byte = ImmGetCompositionStringW( hImc , GCS_COMPSTR , nullptr , 0 ) ;
-          switch( compstr_length_in_byte ){
-          case IMM_ERROR_NODATA:
-          case IMM_ERROR_GENERAL:
-            break;
-          default:
-            {
-              /* バイト単位でもらってきたので、wchar_t 単位に直して、 null文字の余裕を加えてバッファを用意する */
-              size_t const buf_length_in_wchar = ( size_t(compstr_length_in_byte) / sizeof( wchar_t ) ) + 1 ;
-              assert( 0 < buf_length_in_wchar );
-              std::unique_ptr<wchar_t[]> buf{ new wchar_t[buf_length_in_wchar] };
-              if( buf ){
-                //std::fill( &buf[0] , &buf[buf_length_in_wchar-1] , L'\0' );
-                const LONG buf_length_in_byte = LONG( buf_length_in_wchar * sizeof( wchar_t ) );
-                const DWORD l = ImmGetCompositionStringW( hImc , GCS_COMPSTR ,
-                                                          (LPVOID)(buf.get()) , buf_length_in_byte );
-
-                const DWORD attribute_size = ImmGetCompositionStringW( hImc , GCS_COMPATTR , NULL, 0 );
-                std::vector<char> attribute_vec( attribute_size , 0 );
-                const DWORD attribute_end =
-                  ImmGetCompositionStringW( hImc , GCS_COMPATTR , attribute_vec.data() , (DWORD)std::size( attribute_vec ));
-                assert( attribute_end == (DWORD)(std::size( attribute_vec ) ) );
-                {
-                  std::wstring comp_converted;
-                  std::wstring comp_target;
-                  std::wstring comp_unconveted;
-                  size_t begin = 0;
-                  size_t end = 0;
-                  // 変換済みを取り出す
-                  for( end = begin ; end < attribute_end; ++end ){
-                    if( (ATTR_TARGET_CONVERTED == attribute_vec[end] ||
-                         ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
-                      break;
-                    }else{
-                      comp_converted.push_back( buf[ end ] );
-                    }
-                  }
-                  // 変換済みの領域[begin,end) 
-
-                  // 変換中の文字列を取り出す
-                  for( begin = end ; end < attribute_end; ++end ){
-                    if( !(ATTR_TARGET_CONVERTED == attribute_vec[end] ||
-                         ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
-                      break;
-                    }else{
-                      comp_target.push_back( buf[end] );
-                    }
-                  }
-                  // 変換中の領域 [begin,end)
-
-                  // 未変換の文字列を取り出す
-                  for( ; end < attribute_end ; ++end ){
-                    comp_unconveted.push_back( buf[end] );
-                  }
-
-#if 0
-                  {
-                    wchar_t dbgbuf[1024];
-                    _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
-                                  L"attribute_size = %d \"%s[%s]%s\"\n",
-                                  attribute_size ,
-                                  comp_converted.c_str() ,
-                                  comp_target.c_str() ,
-                                  comp_unconveted.c_str() );
-                    OutputDebugStringW( dbgbuf );
-                  }
-#endif
-                  // それぞれ UTF-8 に変換するためにラムダ関数用意する
-                  /*
-                    std::wstring を std::unique_ptr<char[]> に UTF-8 のnull 終端文字列にして変換する
-                    引数が空文字列の場合は nullptr が入る
-                   */
-                  auto toutf8 = [](const std::wstring& arg )->std::unique_ptr<char[]>{
-                    if( arg.empty() ){
-                      return std::unique_ptr<char[]>( nullptr );
-                    }
-                    const int require_byte = WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1 , nullptr , 0 , NULL , NULL );
-                    std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
-                    if( require_byte != WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1, utf8buf.get(), require_byte , NULL , NULL ) ){
-                      utf8buf.reset( nullptr );
-                    }
-                    return utf8buf;
-                  };
-                  comm.comp_conved_utf8 = toutf8( comp_converted );
-                  comm.comp_target_utf8 = toutf8( comp_target ) ;
-                  comm.comp_unconv_utf8 = toutf8( comp_unconveted );
-                }
-              }
-            }
-            break;
-          }
-        }
-        VERIFY( ImmReleaseContext ( hWnd , hImc ) );
-      }
-    } // end of WM_IME_COMPOSITION
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
-
-  case WM_IME_NOTIFY:
-    {
-      switch( wParam ){
-
-      case IMN_OPENCANDIDATE:
-        comm.show_ime_candidate_list = true;
-        ; // tear down;
-      case IMN_CHANGECANDIDATE:
-        {
-          HIMC const hImc = ImmGetContext( hWnd );
-          if( hImc ){
-            DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
-            if( dwSize ){
-              assert( sizeof(CANDIDATELIST)<=dwSize );
-              if( sizeof(CANDIDATELIST)<=dwSize ){ // dwSize は最低でも struct CANDIDATELIST より大きくなければならない
-                
-                (void)(lParam);
-                std::vector<char> candidatelist( (size_t)dwSize );
-                if( (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )
-                    == ImmGetCandidateListW( hImc , 0 , 
-                                             reinterpret_cast<CANDIDATELIST*>(candidatelist.data()),
-                                             (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )) ){
-                  const CANDIDATELIST* const cl = reinterpret_cast<CANDIDATELIST*>( candidatelist.data() );
-                  comm.candidate_list = std::move(IMMCandidateList::cocreate( cl , dwSize ));
-
-#if 0  /* for IMM candidate window debug BEGIN*/
-                  {
-                    wchar_t dbgbuf[1024];
-                    _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
-                                  L"lParam = %lld, dwSize = %d , dwCount = %d , dwSelection = %d\n",
-                                  lParam,
-                                  cl->dwSize ,
-                                  cl->dwCount,
-                                  cl->dwSelection);
-                    OutputDebugStringW( dbgbuf );
-                    for( DWORD i = 0; i < cl->dwCount ; ++i ){
-                      _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
-                                    L"%d%s: %s\n" ,
-                                    i ,(cl->dwSelection == i ? L"*" : L" "),
-                                    (wchar_t*)( candidatelist.data() + cl->dwOffset[i] ) );
-                      OutputDebugStringW( dbgbuf );
-                    }
-                  }
-#endif /* for IMM candidate window debug END */
-
-                }
-              }
-            }
-            VERIFY( ImmReleaseContext ( hWnd , hImc ) );
-          }
-        }
-        break;
-      case IMN_CLOSECANDIDATE:
-        {
-          comm.show_ime_candidate_list = false;
-        }
-        break;
-      default:
-        break;
-      }
-    }
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
-
-  case WM_IME_REQUEST:
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
-
-
-  case WM_INPUTLANGCHANGE:
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
-
-  default:
-    break;
   }
-  return ::DefSubclassProc ( hWnd , uMsg, wParam , lParam );
+  return 1;
 }
 
 
@@ -503,6 +71,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_ int       nCmdShow)
 {
   UNREFERENCED_PARAMETER(lpCmdLine);
+
+  /*********************************************/
+  /* IMM32 変更点  #1                            */
+  /*********************************************/
+
   // snprintf 等が wide-multibyte 変換で使うのでローケルの設定は必要
   // ただし windows では mingw の gcc は、ローケルが Cローケルしか受け付けないのでこれは、Visual C++ ぐらいしか使えない
   // (mingw の 仕様のミスなので、当方では修正できません）
@@ -581,7 +154,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-
+    /*********************************************/
+    /* IMM32 変更点  #2                            */
+    /*********************************************/
     ImGUIIMMCommunication imguiIMMCommunication{};
     VERIFY( imguiIMMCommunication.subclassify( window ) );
 
@@ -645,6 +220,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		}
 
 
+        /*********************************************/
+        /* IMM32 変更点  #3                            */
+        /*********************************************/
         imguiIMMCommunication(); // IMM popup の描画
         
 		// Rendering

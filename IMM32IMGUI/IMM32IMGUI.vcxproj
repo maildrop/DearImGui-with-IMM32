@@ -160,7 +160,11 @@
   <ItemGroup>
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_opengl2.cpp" />
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_sdl.cpp" />
+    <ClCompile Include="imgui_imm32_onthespot.cpp" />
     <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="imgui_imm32_onthespot.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
