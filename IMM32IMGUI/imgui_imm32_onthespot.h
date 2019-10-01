@@ -56,6 +56,8 @@ struct ImGUIIMMCommunication{
     static IMMCandidateList cocreate( const CANDIDATELIST* const src , const size_t src_size);
   };
   
+  static constexpr int candidate_window_num = 9;
+
   bool is_open;
   std::unique_ptr<char[]> comp_conved_utf8;
   std::unique_ptr<char[]> comp_target_utf8;
@@ -121,8 +123,6 @@ struct ImGUIIMMCommunication{
           {
             std::vector<const char*> listbox_items ={};
 
-			const int candidate_window_num = 9;
-
 			/* ページに分割します */
 			int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
 			int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
@@ -130,8 +130,12 @@ struct ImGUIIMMCommunication{
 			auto begin_ite = std::begin(candidate_list.list_utf8);
 			std::advance(begin_ite, candidate_page * candidate_window_num);
 			auto end_ite = begin_ite;
-			for (int i = 0; end_ite != std::end(candidate_list.list_utf8) && i < candidate_window_num ; ++i, std::advance(end_ite, 1))
-				;
+			{
+				auto the_end = std::end(candidate_list.list_utf8);
+				for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
+					std::advance(end_ite, 1);
+				}
+			}
 
             std::for_each( begin_ite , end_ite , 
                            [&](auto &item){
@@ -144,7 +148,7 @@ struct ImGUIIMMCommunication{
                             listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
                             std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
 
-			ImGui::Text("%d/%d", candidate_list.selection , static_cast<int>(std::size(candidate_list.list_utf8)));
+			ImGui::Text("%d/%d", candidate_list.selection + 1 , static_cast<int>(std::size(candidate_list.list_utf8)));
           }
           ImGui::End();
         }
