@@ -429,13 +429,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
-          if( IMN_OPENCANDIDATE == wParam ){
-            OutputDebugStringW( L"IMN_OPENCANDIDATE\n" );
-          }
-          if( IMN_CHANGECANDIDATE == wParam ){
-            OutputDebugStringW( L"IMN_CHANGECANDIDATE\n" );
-          }
-          
           HIMC const hImc = ImmGetContext( hWnd );
           if( hImc ){
             DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
@@ -480,7 +473,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         }
         break;
       case IMN_CLOSECANDIDATE:
-        OutputDebugStringW( L"IMN_CLOSECANDIDATE\n" );
         {
           comm.show_ime_candidate_list = false;
         }
