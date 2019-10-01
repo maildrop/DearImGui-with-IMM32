@@ -84,20 +84,11 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     
   case WM_IME_SETCONTEXT:
     { /* 各ビットを落とす */
-
-	  if (!(lParam & ISC_SHOWUICANDIDATEWINDOW)) {
-		  OutputDebugStringW(L"ISC_SHOWUICANDIDATEWINDOW not was not set.");
-	  }
-
-
       lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW |
                   (ISC_SHOWUICANDIDATEWINDOW ) |
                   (ISC_SHOWUICANDIDATEWINDOW << 1) |
                   (ISC_SHOWUICANDIDATEWINDOW << 2) |
                  (ISC_SHOWUICANDIDATEWINDOW << 3) );
-				 
-	  // lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW);
-
     }
     return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
   case WM_IME_STARTCOMPOSITION:
@@ -182,7 +173,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     comp_unconveted.push_back( buf[end] );
                   }
 
-#if 1
+#if 0
                   {
                     wchar_t dbgbuf[1024];
                     _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
