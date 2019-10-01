@@ -120,16 +120,31 @@ struct ImGUIIMMCommunication{
                          ImGuiWindowFlags_NoSavedSettings ) ){
           {
             std::vector<const char*> listbox_items ={};
-            std::for_each( std::begin( candidate_list.list_utf8 ) , std::end( candidate_list.list_utf8 ),
+
+			const int candidate_window_num = 9;
+
+			/* ページに分割します */
+			int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
+			int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
+
+			auto begin_ite = std::begin(candidate_list.list_utf8);
+			std::advance(begin_ite, candidate_page * candidate_window_num);
+			auto end_ite = begin_ite;
+			for (int i = 0; end_ite != std::end(candidate_list.list_utf8) && i < candidate_window_num ; ++i, std::advance(end_ite, 1))
+				;
+
+            std::for_each( begin_ite , end_ite , 
                            [&](auto &item){
                              listbox_items.push_back( item.c_str() );
                            });
             static int listbox_item_current = 0;
-            listbox_item_current = (int)candidate_list.selection;
+			listbox_item_current = (int)candidate_selection;
             
             ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
                             listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
-                            std::min<int>( 9 , static_cast<int>(std::size( listbox_items ))));
+                            std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
+
+			ImGui::Text("%d/%d", candidate_list.selection , static_cast<int>(std::size(candidate_list.list_utf8)));
           }
           ImGui::End();
         }
