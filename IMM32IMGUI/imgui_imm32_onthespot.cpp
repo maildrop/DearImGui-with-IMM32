@@ -116,6 +116,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
           comm.comp_unconv_utf8 = nullptr;
         }
         if( lParam & GCS_COMPSTR ){
+	
           /* 一段階目で IME から ワイド文字で文字列をもらってくる */
           /* これはバイト単位でやりとりするので、注意 */
           const DWORD compstr_length_in_byte = ImmGetCompositionStringW( hImc , GCS_COMPSTR , nullptr , 0 ) ;
@@ -204,6 +205,10 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   comm.comp_conved_utf8 = toutf8( comp_converted );
                   comm.comp_target_utf8 = toutf8( comp_target ) ;
                   comm.comp_unconv_utf8 = toutf8( comp_unconveted );
+
+				  // TODO Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
+				  // が行われたものとして、送ってこない。なので、ここで　Candidate List の更新を行うことを要求する
+
                 }
               }
             }
