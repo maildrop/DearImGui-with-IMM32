@@ -84,11 +84,20 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     
   case WM_IME_SETCONTEXT:
     { /* 各ビットを落とす */
+
+	  if (!(lParam & ISC_SHOWUICANDIDATEWINDOW)) {
+		  OutputDebugStringW(L"ISC_SHOWUICANDIDATEWINDOW not was not set.");
+	  }
+
+
       lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW |
                   (ISC_SHOWUICANDIDATEWINDOW ) |
                   (ISC_SHOWUICANDIDATEWINDOW << 1) |
                   (ISC_SHOWUICANDIDATEWINDOW << 2) |
-                  (ISC_SHOWUICANDIDATEWINDOW << 3) );
+                 (ISC_SHOWUICANDIDATEWINDOW << 3) );
+				 
+	  // lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW);
+
     }
     return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
   case WM_IME_STARTCOMPOSITION:
@@ -173,7 +182,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     comp_unconveted.push_back( buf[end] );
                   }
 
-#if 0
+#if 1
                   {
                     wchar_t dbgbuf[1024];
                     _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
@@ -220,10 +229,19 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
       switch( wParam ){
 
       case IMN_OPENCANDIDATE:
-        comm.show_ime_candidate_list = true;
-        ; // tear down;
+		  // 本来ならばIMN_OPENCANDIDATE が送られてきた段階で、show_ime_candidate_list のフラグを立てるのだが
+		  // Google IME は、IMN_OPENCANDIDATE を送ってこない（ IMN_CHANGECANDIDATE は送信してくる）
+		  // このために、IMN_CHANGECANDIDATE が立ち上がった時に変更する
+          comm.show_ime_candidate_list = true; 
+
+		  ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
+		  // Google IME 対応用のコード BEGIN 詳細は、IMN_OPENCANDIDATE のコメントを参照
+		  if (!comm.show_ime_candidate_list) { 
+			  comm.show_ime_candidate_list = true;
+		  }
+		  // Google IME 対応用のコード END 
           HIMC const hImc = ImmGetContext( hWnd );
           if( hImc ){
             DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
