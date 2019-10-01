@@ -5,6 +5,7 @@
 #include <utility>
 #include <string>
 #include <locale>
+#include <type_traits>
 #include <cstdio>
 #include <cassert>
 
@@ -23,7 +24,6 @@
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib" )
-
 
 #if !defined( VERIFY ) 
 # if defined( NDEBUG )
@@ -72,18 +72,57 @@ static int common_control_initialize()
 }
 
 struct ImGUIIMMCommunication{
+
+  struct IMMCandidateList{
+    std::vector<std::string> list_utf8;
+    std::vector<std::string>::size_type selection;
+
+    IMMCandidateList()
+      : list_utf8{}, selection(0){
+    }
+    IMMCandidateList( const IMMCandidateList& rhv ) = default;
+    IMMCandidateList( IMMCandidateList&& rhv ) noexcept
+      : list_utf8() , selection( 0 ){
+      *this = std::move( rhv );
+    }
+    
+    ~IMMCandidateList(){
+    }
+
+    IMMCandidateList&
+    operator=( const IMMCandidateList& rhv ) = default;
+   
+    IMMCandidateList&
+    operator=( IMMCandidateList&& rhv ) noexcept
+    {
+      if( this == &rhv ){
+        return *this;
+      }
+      std::swap( list_utf8 , rhv.list_utf8 );
+      std::swap( selection , rhv.selection );
+      return *this;
+    }
+    
+    static IMMCandidateList cocreate( const CANDIDATELIST* const src , const size_t src_size);
+  };
+  
+  bool is_open;
   std::unique_ptr<char[]> comp_conved_utf8;
   std::unique_ptr<char[]> comp_target_utf8;
   std::unique_ptr<char[]> comp_unconv_utf8;
-  bool is_open;
   bool show_ime_candidate_list;
+  IMMCandidateList candidate_list;
+  
   ImGUIIMMCommunication()
-    : comp_conved_utf8( nullptr ),
+    : is_open( false ),
+      comp_conved_utf8( nullptr ),
       comp_target_utf8( nullptr ),
       comp_unconv_utf8( nullptr ),
-      is_open( false )
+      show_ime_candidate_list( false ),
+      candidate_list()
   {
   }
+
   ~ImGUIIMMCommunication()
   {
   }
@@ -122,6 +161,29 @@ struct ImGUIIMMCommunication{
         ImGui::End();
       }
       ImGui::PopStyleVar();
+      if( show_ime_candidate_list ){
+        if (ImGui::Begin("##IME Candidate Window", nullptr ,
+                         ImGuiWindowFlags_Tooltip|
+                         ImGuiWindowFlags_NoNav |
+                         ImGuiWindowFlags_NoInputs |
+                         ImGuiWindowFlags_AlwaysAutoResize |
+                         ImGuiWindowFlags_NoSavedSettings ) ){
+          {
+            std::vector<const char*> listbox_items ={};
+            std::for_each( std::begin( candidate_list.list_utf8 ) , std::end( candidate_list.list_utf8 ),
+                           [&](auto &item){
+                             listbox_items.push_back( item.c_str() );
+                           });
+            static int listbox_item_current = 0;
+            listbox_item_current = (int)candidate_list.selection;
+            
+            ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
+                            listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
+                            std::min<int>( 9 , static_cast<int>(std::size( listbox_items ))));
+          }
+          ImGui::End();
+        }
+      }
     }
     return;
   }
@@ -157,6 +219,38 @@ public:
     return FALSE;
   }
 };
+
+ImGUIIMMCommunication::IMMCandidateList
+ImGUIIMMCommunication::IMMCandidateList::cocreate( const CANDIDATELIST* const src , const size_t src_size)
+{
+  assert( nullptr != src );
+  assert( sizeof( CANDIDATELIST ) <= src->dwSize );
+  assert( src->dwSelection < src->dwCount  );
+  
+  IMMCandidateList dst{};
+  if(! (sizeof( CANDIDATELIST) < src->dwSize )){
+    return dst;
+  }
+  if(! (src->dwSelection < src->dwCount ) ){
+    return dst;
+  }
+  const char* const baseaddr = reinterpret_cast< const char* >( src );
+  
+  for( size_t i = 0; i < src->dwCount ; ++i ){
+    const wchar_t * const item = reinterpret_cast<const wchar_t*>( baseaddr + src->dwOffset[i] );
+    const int require_byte = WideCharToMultiByte( CP_UTF8 , 0 , item , -1 , nullptr , 0 , NULL , NULL );
+    if( 0 < require_byte ){
+      std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
+      if( require_byte == WideCharToMultiByte( CP_UTF8 , 0 , item , -1 , utf8buf.get() , require_byte , NULL, NULL ) ){
+        dst.list_utf8.emplace_back( utf8buf.get() );
+        continue;
+      }
+    }
+    dst.list_utf8.emplace_back( u8"??" );
+  }
+  dst.selection = src->dwSelection;
+  return dst;
+}
 
 LRESULT
 ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
@@ -329,13 +423,19 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   case WM_IME_NOTIFY:
     {
       switch( wParam ){
+
       case IMN_OPENCANDIDATE:
-        OutputDebugStringW( L"IMN_OPENCANDIDATE\n" );
-        break;
+        comm.show_ime_candidate_list = true;
+        ; // tear down;
       case IMN_CHANGECANDIDATE:
-        OutputDebugStringW( L"IMN_CHANGECANDIDATE\n" );
         {
-          comm.show_ime_candidate_list = true;
+          if( IMN_OPENCANDIDATE == wParam ){
+            OutputDebugStringW( L"IMN_OPENCANDIDATE\n" );
+          }
+          if( IMN_CHANGECANDIDATE == wParam ){
+            OutputDebugStringW( L"IMN_CHANGECANDIDATE\n" );
+          }
+          
           HIMC const hImc = ImmGetContext( hWnd );
           if( hImc ){
             DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
@@ -349,8 +449,10 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     == ImmGetCandidateListW( hImc , 0 , 
                                              reinterpret_cast<CANDIDATELIST*>(candidatelist.data()),
                                              (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )) ){
-                  const CANDIDATELIST* cl = reinterpret_cast<CANDIDATELIST*>( candidatelist.data() );
-                  (void)(cl);
+                  const CANDIDATELIST* const cl = reinterpret_cast<CANDIDATELIST*>( candidatelist.data() );
+                  comm.candidate_list = std::move(IMMCandidateList::cocreate( cl , dwSize ));
+
+#if 0  /* for IMM candidate window debug BEGIN*/
                   {
                     wchar_t dbgbuf[1024];
                     _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
@@ -368,6 +470,8 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                       OutputDebugStringW( dbgbuf );
                     }
                   }
+#endif /* for IMM candidate window debug END */
+
                 }
               }
             }
@@ -379,7 +483,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         OutputDebugStringW( L"IMN_CLOSECANDIDATE\n" );
         {
           comm.show_ime_candidate_list = false;
-
         }
         break;
       default:
@@ -428,7 +531,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+	SDL_WindowFlags window_flags = (SDL_WindowFlags)((SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI));
 	SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
