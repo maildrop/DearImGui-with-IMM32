@@ -135,12 +135,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			ImFontConfig config{};
 			config.MergeMode = true;
 			config.PixelSnapH = true;
+            config.SizePixels = 16.0f * 1.0f;
 			return config;
 		}();
 
-		io.Fonts->AddFontDefault();
-		io.Fonts->AddFontFromFileTTF("NotoSansMonoCJKjp-Regular.otf", 16.0f, &config, io.Fonts->GetGlyphRangesJapanese());
-	}
+        io.Fonts->AddFontDefault();
+        io.Fonts->AddFontFromFileTTF("NotoSansMonoCJKjp-Regular.otf", 16.0f,
+            &config, ImGUIIMMCommunication::getJapaneseGlyphRanges()); //  io.Fonts->GetGlyphRangesJapanese());
+    }
 
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
 	//io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);

@@ -95,6 +95,8 @@ private:
   imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
                                             UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm);
 public:
+  static const ImWchar* getJapaneseGlyphRanges();
+
   inline BOOL
   subclassify( HWND hWnd )
   {
