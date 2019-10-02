@@ -14,6 +14,101 @@
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib" )
 
+void 
+ImGUIIMMCommunication::operator()()
+{
+  if( is_open ){
+    ImGuiIO& io = ImGui::GetIO(); 
+    ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
+    ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
+    ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f);
+	  
+    if (ImGui::Begin("IME Composition Window", &(this->is_open),
+                     ImGuiWindowFlags_Tooltip|
+                     ImGuiWindowFlags_NoNav |
+                     ImGuiWindowFlags_NoDecoration | 
+                     ImGuiWindowFlags_NoInputs |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings ) ){
+        
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
+      /*
+      // Google IME への対応のため。
+      target_screen_pos = ImGui::GetCursorScreenPos();
+      target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
+
+      */
+
+      ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
+      ImGui::PopStyleColor();
+      if( static_cast<bool>( comp_target_utf8 ) ){
+        ImGui::SameLine(0.0f,0.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f) );
+		  
+        target_screen_pos = ImGui::GetCursorScreenPos();
+        target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
+
+        ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
+        ImGui::PopStyleColor();
+      }
+      if( static_cast<bool>( comp_unconv_utf8 ) ){
+        ImGui::SameLine(0.0f,0.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
+        ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
+        ImGui::PopStyleColor();
+      }
+      ImGui::End();
+    }
+    ImGui::PopStyleVar();
+    if( show_ime_candidate_list ){
+
+      ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
+
+      if (ImGui::Begin("##IME Candidate Window", nullptr,
+                       ImGuiWindowFlags_Tooltip |
+                       ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoDecoration |
+                       ImGuiWindowFlags_NoInputs |
+                       ImGuiWindowFlags_AlwaysAutoResize |
+                       ImGuiWindowFlags_NoSavedSettings)) {
+        {
+          std::vector<const char*> listbox_items ={};
+
+          /* ページに分割します */
+          int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
+          int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
+
+          auto begin_ite = std::begin(candidate_list.list_utf8);
+          std::advance(begin_ite, candidate_page * candidate_window_num);
+          auto end_ite = begin_ite;
+          {
+            auto the_end = std::end(candidate_list.list_utf8);
+            for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
+              std::advance(end_ite, 1);
+            }
+          }
+
+          std::for_each( begin_ite , end_ite , 
+                         [&](auto &item){
+                           listbox_items.push_back( item.c_str() );
+                         });
+          static int listbox_item_current = 0;
+          listbox_item_current = (int)candidate_selection;
+            
+          ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
+                          listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
+                          std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
+
+          ImGui::Text("%d/%d", candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
+        }
+        ImGui::End();
+      }
+    }
+  }
+  return;
+}
 
 ImGUIIMMCommunication::IMMCandidateList
 ImGUIIMMCommunication::IMMCandidateList::cocreate( const CANDIDATELIST* const src , const size_t src_size)
@@ -88,7 +183,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   (ISC_SHOWUICANDIDATEWINDOW ) |
                   (ISC_SHOWUICANDIDATEWINDOW << 1) |
                   (ISC_SHOWUICANDIDATEWINDOW << 2) |
-                 (ISC_SHOWUICANDIDATEWINDOW << 3) );
+                  (ISC_SHOWUICANDIDATEWINDOW << 3) );
     }
     return ::DefWindowProc( hWnd , uMsg , wParam , lParam );
   case WM_IME_STARTCOMPOSITION:
@@ -97,7 +192,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
          アプリケーションが 変換文字列の表示を処理する際には、このメッセージを処理しなければいけません。
          DefWindowProc 関数にこのメッセージを処理させると、デフォルトの IME Window にメッセージが伝わります。
          （つまり 自前で変換ウィンドウを描画する時には、DefWindowPrc に渡さない）
-       */
+      */
       comm.is_open = true;
     }
     return 0; // 
@@ -114,6 +209,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
           comm.comp_conved_utf8 = nullptr;
           comm.comp_target_utf8 = nullptr;
           comm.comp_unconv_utf8 = nullptr;
+		  
         }
         if( lParam & GCS_COMPSTR ){
 	
@@ -161,7 +257,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   // 変換中の文字列を取り出す
                   for( begin = end ; end < attribute_end; ++end ){
                     if( !(ATTR_TARGET_CONVERTED == attribute_vec[end] ||
-                         ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
+                          ATTR_TARGET_NOTCONVERTED == attribute_vec[end] ) ){
                       break;
                     }else{
                       comp_target.push_back( buf[end] );
@@ -174,7 +270,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     comp_unconveted.push_back( buf[end] );
                   }
 
-#if 0
+#if 1
                   {
                     wchar_t dbgbuf[1024];
                     _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
@@ -190,7 +286,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   /*
                     std::wstring を std::unique_ptr<char[]> に UTF-8 のnull 終端文字列にして変換する
                     引数が空文字列の場合は nullptr が入る
-                   */
+                  */
                   auto toutf8 = [](const std::wstring& arg )->std::unique_ptr<char[]>{
                     if( arg.empty() ){
                       return std::unique_ptr<char[]>( nullptr );
@@ -206,8 +302,8 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   comm.comp_target_utf8 = toutf8( comp_target ) ;
                   comm.comp_unconv_utf8 = toutf8( comp_unconveted );
 
-				  // TODO Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
-				  // が行われたものとして、送ってこない。なので、ここで　Candidate List の更新を行うことを要求する
+                  // TODO Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
+                  // が行われたものとして、送ってこない。なので、ここで　Candidate List の更新を行うことを要求する
 
                 }
               }
@@ -225,19 +321,23 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
       switch( wParam ){
 
       case IMN_OPENCANDIDATE:
-		  // 本来ならばIMN_OPENCANDIDATE が送られてきた段階で、show_ime_candidate_list のフラグを立てるのだが
-		  // Google IME は、IMN_OPENCANDIDATE を送ってこない（ IMN_CHANGECANDIDATE は送信してくる）
-		  // このために、IMN_CHANGECANDIDATE が立ち上がった時に変更する
-          comm.show_ime_candidate_list = true; 
+        // 本来ならばIMN_OPENCANDIDATE が送られてきた段階で、show_ime_candidate_list のフラグを立てるのだが
+        // Google IME は、IMN_OPENCANDIDATE を送ってこない（ IMN_CHANGECANDIDATE は送信してくる）
+        // このために、IMN_CHANGECANDIDATE が立ち上がった時に変更する
+        comm.show_ime_candidate_list = true; 
 
-		  ; // tear down;
+        ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
+		  if (IMN_CHANGECANDIDATE == wParam) {
+            OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
+		  }
 		  // Google IME 対応用のコード BEGIN 詳細は、IMN_OPENCANDIDATE のコメントを参照
 		  if (!comm.show_ime_candidate_list) { 
-			  comm.show_ime_candidate_list = true;
+            comm.show_ime_candidate_list = true;
 		  }
 		  // Google IME 対応用のコード END 
+
           HIMC const hImc = ImmGetContext( hWnd );
           if( hImc ){
             DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
@@ -283,6 +383,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         break;
       case IMN_CLOSECANDIDATE:
         {
+		  OutputDebugStringW(L"IMN_CLOSECANDIDATE\n");
           comm.show_ime_candidate_list = false;
         }
         break;

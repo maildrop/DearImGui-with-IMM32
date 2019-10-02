@@ -1,4 +1,9 @@
-﻿
+﻿/**
+   Dear ImGui with IME on-the-spot translation routines.
+   author: TOGURO Mikito , mit@shalab.net
+
+
+ */
 #pragma once
 #if !defined( IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD )
 #define IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD 1
@@ -18,8 +23,10 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
+#if defined( _WIN32 ) 
 #include <Windows.h>
 #include <commctrl.h>
+#endif /* defined( _WIN32 ) */
 
 struct ImGUIIMMCommunication{
 
@@ -36,13 +43,12 @@ struct ImGUIIMMCommunication{
       *this = std::move( rhv );
     }
     
-    ~IMMCandidateList(){
-    }
+    ~IMMCandidateList() = default;
 
-    IMMCandidateList&
+    inline IMMCandidateList&
     operator=( const IMMCandidateList& rhv ) = default;
    
-    IMMCandidateList&
+    inline IMMCandidateList&
     operator=( IMMCandidateList&& rhv ) noexcept
     {
       if( this == &rhv ){
@@ -75,107 +81,9 @@ struct ImGUIIMMCommunication{
   {
   }
 
-  ~ImGUIIMMCommunication()
-  {
-  }
+  ~ImGUIIMMCommunication() = default;
+   void operator()();
 
-  inline void operator()() {
-    if( is_open ){
-
-
-
-      ImGuiIO& io = ImGui::GetIO(); 
-      ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
-      ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
-      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
-	  ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f);
-	  
-	  if (ImGui::Begin("IME Composition Window", &(this->is_open),
-                       ImGuiWindowFlags_Tooltip|
-                       ImGuiWindowFlags_NoNav |
-                       ImGuiWindowFlags_NoDecoration | 
-                       ImGuiWindowFlags_NoInputs |
-                       ImGuiWindowFlags_AlwaysAutoResize |
-                       ImGuiWindowFlags_NoSavedSettings ) ){
-        
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
-		/*
-		// Google IME への対応のため。
-		target_screen_pos = ImGui::GetCursorScreenPos();
-		target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
-
-		*/
-
-        ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
-        ImGui::PopStyleColor();
-        if( static_cast<bool>( comp_target_utf8 ) ){
-          ImGui::SameLine(0.0f,0.0f);
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f) );
-		  
-		  target_screen_pos = ImGui::GetCursorScreenPos();
-		  target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
-
-		  ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
-          ImGui::PopStyleColor();
-        }
-        if( static_cast<bool>( comp_unconv_utf8 ) ){
-          ImGui::SameLine(0.0f,0.0f);
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
-          ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
-          ImGui::PopStyleColor();
-        }
-        ImGui::End();
-      }
-      ImGui::PopStyleVar();
-      if( show_ime_candidate_list ){
-
-		  ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
-
-		  if (ImGui::Begin("##IME Candidate Window", nullptr,
-			  ImGuiWindowFlags_Tooltip |
-			  ImGuiWindowFlags_NoNav |
-			  ImGuiWindowFlags_NoDecoration |
-			  ImGuiWindowFlags_NoInputs |
-			  ImGuiWindowFlags_AlwaysAutoResize |
-			  ImGuiWindowFlags_NoSavedSettings)) {
-          {
-            std::vector<const char*> listbox_items ={};
-
-			/* ページに分割します */
-			int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
-			int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
-
-			auto begin_ite = std::begin(candidate_list.list_utf8);
-			std::advance(begin_ite, candidate_page * candidate_window_num);
-			auto end_ite = begin_ite;
-			{
-				auto the_end = std::end(candidate_list.list_utf8);
-				for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
-					std::advance(end_ite, 1);
-				}
-			}
-
-            std::for_each( begin_ite , end_ite , 
-                           [&](auto &item){
-                             listbox_items.push_back( item.c_str() );
-                           });
-            static int listbox_item_current = 0;
-			listbox_item_current = (int)candidate_selection;
-            
-            ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
-                            listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
-                            std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
-
-			ImGui::Text("%d/%d", candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
-          }
-          ImGui::End();
-        }
-      }
-    }
-    return;
-  }
-  
 private:
   static LRESULT
   WINAPI imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
@@ -209,7 +117,5 @@ public:
   }
   
 };
-
-
 
 #endif /* IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD */
