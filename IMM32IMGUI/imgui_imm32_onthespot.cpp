@@ -69,7 +69,7 @@ ImGUIIMMCommunication::operator()()
 
       */
 
-      ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : u8"" );
+      ImGui::Text( static_cast<bool>( comp_conved_utf8 ) ? comp_conved_utf8.get() : "" );
       ImGui::PopStyleColor();
       if( static_cast<bool>( comp_target_utf8 ) ){
         ImGui::SameLine(0.0f,0.0f);
@@ -78,13 +78,13 @@ ImGUIIMMCommunication::operator()()
         target_screen_pos = ImGui::GetCursorScreenPos();
         target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
 
-        ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : u8"" );
+        ImGui::Text( static_cast<bool>( comp_target_utf8 ) ? comp_target_utf8.get() : "" );
         ImGui::PopStyleColor();
       }
       if( static_cast<bool>( comp_unconv_utf8 ) ){
         ImGui::SameLine(0.0f,0.0f);
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f,1.0f,0.1875f, 1.0f) );
-        ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : u8"" );
+        ImGui::Text( static_cast<bool>( comp_unconv_utf8 ) ? comp_unconv_utf8.get() : "" );
         ImGui::PopStyleColor();
       }
       ImGui::End();
@@ -135,7 +135,7 @@ ImGUIIMMCommunication::operator()()
                        ImGuiWindowFlags_NoSavedSettings)) {
         {
             
-          ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
+          ImGui::ListBox( "##IMECandidateListWindow" , &listbox_item_current ,
                           listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
                           std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
 
@@ -174,7 +174,7 @@ ImGUIIMMCommunication::IMMCandidateList::cocreate( const CANDIDATELIST* const sr
         continue;
       }
     }
-    dst.list_utf8.emplace_back( u8"??" );
+    dst.list_utf8.emplace_back( "??" );
   }
   dst.selection = src->dwSelection;
   return dst;
@@ -411,7 +411,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         VERIFY( ImmReleaseContext ( hWnd , hImc ) );
       }
     } // end of WM_IME_COMPOSITION
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+    return ::DefSubclassProc ( hWnd , uMsg , wParam , lParam );
 
   case WM_IME_NOTIFY:
     {
