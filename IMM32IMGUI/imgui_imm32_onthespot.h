@@ -114,10 +114,17 @@ public:
        しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
     */
     ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
-    
-    return ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
-                                reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
-                                reinterpret_cast<DWORD_PTR>(this) );
+    if( ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
+                             reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
+                             reinterpret_cast<DWORD_PTR>(this) ) ){
+      HIMC hImc = ImmAssociateContext( hWnd , nullptr );
+      if( ! ::SetProp( hWnd , TEXT( "DearImGuiIMEContext") , (HANDLE) hImc ) ){
+        assert( !"SetProp failed" );
+        ImmAssociateContext( hWnd , hImc );
+      }
+      return TRUE;
+    }
+    return FALSE;
   }
   
   inline BOOL

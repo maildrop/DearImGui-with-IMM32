@@ -19,27 +19,29 @@
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib" )
 
-
-
 void 
 ImGUIIMMCommunication::operator()()
 {
   ImGuiIO& io = ImGui::GetIO(); 
   { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
     static bool wantTextInput_prev = io.WantTextInput;
+
     // detect io.WantTextInput off Edgetrigger .
-    if( (wantTextInput_prev != io.WantTextInput) && (!io.WantTextInput )){
+    if( (wantTextInput_prev != io.WantTextInput) ){
       //OutputDebugStringW( L"Focus lost from TextInput" );
       HWND hWnd = static_cast<HWND>( io.ImeWindowHandle );
       if( hWnd ){
-        HIMC hImc = ImmGetContext( hWnd );
-        if( hImc ){
-          if( ImmGetOpenStatus( hImc ) ){
-            VERIFY( ImmSetOpenStatus( hImc , FALSE ) );
+        if((!io.WantTextInput )){ // off
+          HIMC hImc = ImmAssociateContext( hWnd , nullptr );
+          VERIFY( ::SetProp( hWnd , TEXT("DearImGuiIMEContext") , (HANDLE) hImc ) );
+        }else{ // on 
+          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("DearImGuiIMEContext") );
+          if( hImc ){
+            ImmAssociateContext( hWnd , hImc );
           }
-          VERIFY( ImmReleaseContext( hWnd , hImc ) );
         }
       }
+
     }
     wantTextInput_prev = io.WantTextInput;
   }
@@ -279,7 +281,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
       */
       comm.is_open = true;
     }
-    return 0; // 
+    return 1;
   case WM_IME_ENDCOMPOSITION:
     {
       comm.is_open = false;
@@ -420,7 +422,13 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         // Google IME は、IMN_OPENCANDIDATE を送ってこない（ IMN_CHANGECANDIDATE は送信してくる）
         // このために、IMN_CHANGECANDIDATE が立ち上がった時に変更する
         comm.show_ime_candidate_list = true; 
+#if 0
+          if (IMN_OPENCANDIDATE == wParam) {
+            OutputDebugStringW(L"IMN_OPENCANDIDATE\n");
+          }
+#endif
 
+        
         ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
