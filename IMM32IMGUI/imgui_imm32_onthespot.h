@@ -1,8 +1,6 @@
 ﻿/**
    Dear ImGui with IME on-the-spot translation routines.
    author: TOGURO Mikito , mit@shalab.net
-
-
  */
 #pragma once
 #if !defined( IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD )
@@ -58,7 +56,10 @@ struct ImGUIIMMCommunication{
       std::swap( selection , rhv.selection );
       return *this;
     }
-    
+    inline void clear(){
+      list_utf8.clear();
+      selection = 0;
+    }
     static IMMCandidateList cocreate( const CANDIDATELIST* const src , const size_t src_size);
   };
   
@@ -85,6 +86,8 @@ struct ImGUIIMMCommunication{
    void operator()();
 
 private:
+  bool update_candidate_window(HWND hWnd);
+
   static LRESULT
   WINAPI imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
                                   UINT_PTR uIdSubclass , DWORD_PTR dwRefData );

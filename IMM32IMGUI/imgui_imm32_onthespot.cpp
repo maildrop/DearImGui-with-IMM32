@@ -1,4 +1,9 @@
-﻿#include "imgui_imm32_onthespot.h"
+﻿/**
+   Dear ImGui with IME on-the-spot translation routines.
+   author: TOGURO Mikito , mit@shalab.net
+ */
+
+#include "imgui_imm32_onthespot.h"
 
 #if !defined( VERIFY ) 
 # if defined( NDEBUG )
@@ -13,6 +18,8 @@
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib" )
+
+
 
 void 
 ImGUIIMMCommunication::operator()()
@@ -62,7 +69,7 @@ ImGUIIMMCommunication::operator()()
       ImGui::End();
     }
     ImGui::PopStyleVar();
-    if( show_ime_candidate_list ){
+    if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
 
       ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
 
@@ -142,6 +149,54 @@ ImGUIIMMCommunication::IMMCandidateList::cocreate( const CANDIDATELIST* const sr
   return dst;
 }
 
+bool
+ImGUIIMMCommunication::update_candidate_window(HWND hWnd)
+{
+  assert( IsWindow( hWnd ) );
+  bool result = false;
+  HIMC const hImc = ImmGetContext( hWnd );
+  if( hImc ){
+    DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
+      
+    if( dwSize ){
+      assert( sizeof(CANDIDATELIST)<=dwSize );
+      if( sizeof(CANDIDATELIST)<=dwSize ){ // dwSize は最低でも struct CANDIDATELIST より大きくなければならない
+        
+        std::vector<char> candidatelist( (size_t)dwSize );
+        if( (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )
+            == ImmGetCandidateListW( hImc , 0 , 
+                                     reinterpret_cast<CANDIDATELIST*>(candidatelist.data()),
+                                     (DWORD)(std::size( candidatelist ) * sizeof( typename decltype( candidatelist )::value_type ) )) ){
+          const CANDIDATELIST* const cl = reinterpret_cast<CANDIDATELIST*>( candidatelist.data() );
+          candidate_list = std::move(IMMCandidateList::cocreate( cl , dwSize ));
+          result = true;
+#if 0  /* for IMM candidate window debug BEGIN*/
+          {
+            wchar_t dbgbuf[1024];
+            _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
+                          L" dwSize = %d , dwCount = %d , dwSelection = %d\n",
+                          cl->dwSize ,
+                          cl->dwCount,
+                          cl->dwSelection);
+            OutputDebugStringW( dbgbuf );
+            for( DWORD i = 0; i < cl->dwCount ; ++i ){
+              _snwprintf_s( dbgbuf , sizeof( dbgbuf )/sizeof( dbgbuf[0] ),
+                            L"%d%s: %s\n" ,
+                            i ,(cl->dwSelection == i ? L"*" : L" "),
+                            (wchar_t*)( candidatelist.data() + cl->dwOffset[i] ) );
+              OutputDebugStringW( dbgbuf );
+            }
+          }
+#endif /* for IMM candidate window debug END */
+          
+        }
+      }
+    }
+    VERIFY( ImmReleaseContext ( hWnd , hImc ) );
+  }
+  return result;
+}
+
 LRESULT
 ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
                                                        UINT_PTR uIdSubclass , DWORD_PTR dwRefData )
@@ -209,7 +264,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
           comm.comp_conved_utf8 = nullptr;
           comm.comp_target_utf8 = nullptr;
           comm.comp_unconv_utf8 = nullptr;
-		  
+          comm.show_ime_candidate_list = false;
         }
         if( lParam & GCS_COMPSTR ){
 	
@@ -270,7 +325,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     comp_unconveted.push_back( buf[end] );
                   }
 
-#if 1
+#if 0
                   {
                     wchar_t dbgbuf[1024];
                     _snwprintf_s( dbgbuf , sizeof( dbgbuf ) / sizeof( dbgbuf[0] ) ,
@@ -302,9 +357,20 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                   comm.comp_target_utf8 = toutf8( comp_target ) ;
                   comm.comp_unconv_utf8 = toutf8( comp_unconveted );
 
-                  // TODO Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
-                  // が行われたものとして、送ってこない。なので、ここで　Candidate List の更新を行うことを要求する
+                  /* Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
+                     が行われたものとして、送ってこない。
+                     なので、ここで　Candidate List の更新を行うことを要求する */
 
+                  // comp_target が空の場合は消去する
+                  if( !static_cast<bool>( comm.comp_target_utf8 ) ){
+                    comm.candidate_list.clear(); 
+                  }else{
+                    // candidate_list の取得に失敗したときは消去する
+                    if( !comm.update_candidate_window( hWnd ) ){
+                      comm.candidate_list.clear(); 
+                    }
+                  }
+                  
                 }
               }
             }
@@ -329,15 +395,17 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
-		  if (IMN_CHANGECANDIDATE == wParam) {
+          if (IMN_CHANGECANDIDATE == wParam) {
             OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
-		  }
-		  // Google IME 対応用のコード BEGIN 詳細は、IMN_OPENCANDIDATE のコメントを参照
-		  if (!comm.show_ime_candidate_list) { 
+          }
+          
+          // Google IME 対応用のコード BEGIN 詳細は、IMN_OPENCANDIDATE のコメントを参照
+          if (!comm.show_ime_candidate_list) { 
             comm.show_ime_candidate_list = true;
-		  }
-		  // Google IME 対応用のコード END 
+          }
+          // Google IME 対応用のコード END 
 
+          
           HIMC const hImc = ImmGetContext( hWnd );
           if( hImc ){
             DWORD dwSize = ImmGetCandidateListW( hImc , 0 , NULL , 0 );
