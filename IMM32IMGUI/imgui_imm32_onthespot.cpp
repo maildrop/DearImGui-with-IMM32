@@ -1,7 +1,7 @@
 ﻿/**
    Dear ImGui with IME on-the-spot translation routines.
    author: TOGURO Mikito , mit@shalab.net
- */
+*/
 
 #include "imgui_imm32_onthespot.h"
 
@@ -24,8 +24,27 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 void 
 ImGUIIMMCommunication::operator()()
 {
+  ImGuiIO& io = ImGui::GetIO(); 
+  { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
+    static bool wantTextInput_prev = io.WantTextInput;
+    // detect io.WantTextInput off Edgetrigger .
+    if( (wantTextInput_prev != io.WantTextInput) && (!io.WantTextInput )){
+      //OutputDebugStringW( L"Focus lost from TextInput" );
+      HWND hWnd = static_cast<HWND>( io.ImeWindowHandle );
+      if( hWnd ){
+        HIMC hImc = ImmGetContext( hWnd );
+        if( hImc ){
+          if( ImmGetOpenStatus( hImc ) ){
+            VERIFY( ImmSetOpenStatus( hImc , FALSE ) );
+          }
+          VERIFY( ImmReleaseContext( hWnd , hImc ) );
+        }
+      }
+    }
+    wantTextInput_prev = io.WantTextInput;
+  }
+  
   if( is_open ){
-    ImGuiIO& io = ImGui::GetIO(); 
     ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
     ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
@@ -70,9 +89,41 @@ ImGUIIMMCommunication::operator()()
     }
     ImGui::PopStyleVar();
     if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
+      
+      std::vector<const char*> listbox_items ={};
+      
+      /* ページに分割します */
+      int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
+      int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
+      
+      auto begin_ite = std::begin(candidate_list.list_utf8);
+      std::advance(begin_ite, candidate_page * candidate_window_num);
+      auto end_ite = begin_ite;
+      {
+        auto the_end = std::end(candidate_list.list_utf8);
+        for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
+          std::advance(end_ite, 1);
+        }
+      }
+      
+      std::for_each( begin_ite , end_ite , 
+                     [&](auto &item){
+                       listbox_items.push_back( item.c_str() );
+                     });
+      static int listbox_item_current = 0;
+      listbox_item_current = (int)candidate_selection;
 
+      /* もし candidate window が画面の外に出ることがあるのならば、上に表示する */
+      const float candidate_window_height =
+        (( ImGui::GetStyle().FramePadding.y * 2) +
+         (( ImGui::GetTextLineHeightWithSpacing() ) * ((int)std::size( listbox_items ) +2 )));
+
+      if( io.DisplaySize.y < (target_screen_pos.y + candidate_window_height) ){
+        target_screen_pos.y -=
+          ImGui::GetTextLineHeightWithSpacing() + candidate_window_height;
+      }
+      
       ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
-
       if (ImGui::Begin("##IME Candidate Window", nullptr,
                        ImGuiWindowFlags_Tooltip |
                        ImGuiWindowFlags_NoNav |
@@ -81,28 +132,6 @@ ImGUIIMMCommunication::operator()()
                        ImGuiWindowFlags_AlwaysAutoResize |
                        ImGuiWindowFlags_NoSavedSettings)) {
         {
-          std::vector<const char*> listbox_items ={};
-
-          /* ページに分割します */
-          int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
-          int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
-
-          auto begin_ite = std::begin(candidate_list.list_utf8);
-          std::advance(begin_ite, candidate_page * candidate_window_num);
-          auto end_ite = begin_ite;
-          {
-            auto the_end = std::end(candidate_list.list_utf8);
-            for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
-              std::advance(end_ite, 1);
-            }
-          }
-
-          std::for_each( begin_ite , end_ite , 
-                         [&](auto &item){
-                           listbox_items.push_back( item.c_str() );
-                         });
-          static int listbox_item_current = 0;
-          listbox_item_current = (int)candidate_selection;
             
           ImGui::ListBox( u8"##IMECandidateListWindow" , &listbox_item_current ,
                           listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
@@ -395,9 +424,12 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
+#if 0
           if (IMN_CHANGECANDIDATE == wParam) {
             OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
           }
+#endif
+          
           
           // Google IME 対応用のコード BEGIN 詳細は、IMN_OPENCANDIDATE のコメントを参照
           if (!comm.show_ime_candidate_list) { 
@@ -441,7 +473,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     }
                   }
 #endif /* for IMM candidate window debug END */
-
                 }
               }
             }
@@ -451,7 +482,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         break;
       case IMN_CLOSECANDIDATE:
         {
-		  OutputDebugStringW(L"IMN_CLOSECANDIDATE\n");
+          //OutputDebugStringW(L"IMN_CLOSECANDIDATE\n");
           comm.show_ime_candidate_list = false;
         }
         break;

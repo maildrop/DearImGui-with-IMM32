@@ -102,6 +102,19 @@ public:
     if(! IsWindow( hWnd ) ){
       return FALSE;
     }
+
+    /* IME 制御用 imgui_imm32_onthespot では、
+       TextWidget がフォーカスを失ったときに io.WantTextInput が true -> off になるので
+       この時にIMEのステータスを見て、開いていれば閉じる 
+       @see ImGUIIMMCommunication::operator()() の先頭
+
+       Dear ImGui の ImGui::IO::ImeWindowHandle は元々 CompositionWindowの位置を指定するために
+       使っていたのでその目的に合致する 
+
+       しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
+    */
+    ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
+    
     return ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
                                 reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
                                 reinterpret_cast<DWORD_PTR>(this) );
