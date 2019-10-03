@@ -90,6 +90,8 @@ ImGUIIMMCommunication::operator()()
       ImGui::End();
     }
     ImGui::PopStyleVar();
+
+    /* Draw Candidate List */
     if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
       
       std::vector<const char*> listbox_items ={};
@@ -130,17 +132,26 @@ ImGUIIMMCommunication::operator()()
                        ImGuiWindowFlags_Tooltip |
                        ImGuiWindowFlags_NoNav |
                        ImGuiWindowFlags_NoDecoration |
-                       ImGuiWindowFlags_NoInputs |
+//                       ImGuiWindowFlags_NoInputs |
                        ImGuiWindowFlags_AlwaysAutoResize |
                        ImGuiWindowFlags_NoSavedSettings)) {
-        {
-            
           ImGui::ListBox( "##IMECandidateListWindow" , &listbox_item_current ,
                           listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
                           std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
+          ImGui::Text("%d/%d",
+              candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
 
-          ImGui::Text("%d/%d", candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
-        }
+#if defined( _DEBUG )
+          ImGui::SameLine();
+          ImGui::TextColored( ImVec4(1.0f, 0.0f, 0.0f, 0.5f) , "%s",
+# if defined( UNICODE )
+              u8" DEBUG (UNICODE)"
+# else 
+              u8" DEBUG (MBCS)"
+# endif /* defined( UNICODE ) */
+          );
+#endif /* defined( DEBUG ) */
+
         ImGui::End();
       }
     }
