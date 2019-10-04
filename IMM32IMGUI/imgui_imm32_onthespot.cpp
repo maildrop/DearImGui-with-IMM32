@@ -83,8 +83,8 @@ ImGUIIMMCommunication::operator()()
         ImGui::Text(static_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
         ImGui::PopStyleColor();
       }
-      ImGui::End();
     }
+    ImGui::End();
     ImGui::PopStyleVar();
 
 
@@ -146,8 +146,8 @@ ImGUIIMMCommunication::operator()()
                             );
 #endif /* defined( DEBUG ) */
         
-        ImGui::EndTooltip();
       }
+      ImGui::EndTooltip();
     }
   }
   return;
