@@ -16,6 +16,8 @@
 #include "imgui_imm32_onthespot.h"
 #endif /* defined( _WIN32 ) */
 
+#include "imgex.hpp"
+
 #include <locale>
 #include <cassert>
 #if !defined( VERIFY ) 
@@ -96,7 +98,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	SDL_WindowFlags window_flags = (SDL_WindowFlags)((SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI));
+    constexpr Uint32 window_flags = 
+        imgex::composite_flags<Uint32>(SDL_WINDOW_OPENGL,SDL_WINDOW_RESIZABLE, SDL_WINDOW_ALLOW_HIGHDPI);
 	SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
@@ -229,6 +232,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         
 		// Rendering
 		ImGui::Render();
+
 		glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
