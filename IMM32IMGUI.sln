@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IMM32IMGUI", "IMM32IMGUI\IM
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DearImGUI", "DearImGUI\DearImGUI.vcxproj", "{4CD0974E-951B-4AA1-B273-6122BC41E910}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "widgetTest", "widgetTest\widgetTest.vcxproj", "{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4CD0974E-951B-4AA1-B273-6122BC41E910} = {4CD0974E-951B-4AA1-B273-6122BC41E910}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -54,6 +59,22 @@ Global
 		{4CD0974E-951B-4AA1-B273-6122BC41E910}.Release-MultiByte|x64.Build.0 = Release-MultiByte|x64
 		{4CD0974E-951B-4AA1-B273-6122BC41E910}.Release-MultiByte|x86.ActiveCfg = Release-MultiByte|Win32
 		{4CD0974E-951B-4AA1-B273-6122BC41E910}.Release-MultiByte|x86.Build.0 = Release-MultiByte|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug|x64.ActiveCfg = Debug|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug|x64.Build.0 = Debug|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug|x86.ActiveCfg = Debug|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug|x86.Build.0 = Debug|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug-MultiByte|x64.ActiveCfg = Debug|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug-MultiByte|x64.Build.0 = Debug|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug-MultiByte|x86.ActiveCfg = Debug|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Debug-MultiByte|x86.Build.0 = Debug|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release|x64.ActiveCfg = Release|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release|x64.Build.0 = Release|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release|x86.ActiveCfg = Release|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release|x86.Build.0 = Release|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release-MultiByte|x64.ActiveCfg = Release|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release-MultiByte|x64.Build.0 = Release|x64
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release-MultiByte|x86.ActiveCfg = Release|Win32
+		{8F1177D8-0DC4-49BF-A0A7-D0D9A8CE8C88}.Release-MultiByte|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

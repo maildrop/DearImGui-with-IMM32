@@ -23,28 +23,6 @@ void
 ImGUIIMMCommunication::operator()()
 {
   ImGuiIO& io = ImGui::GetIO(); 
-  { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
-    static bool wantTextInput_prev = io.WantTextInput;
-
-    // detect io.WantTextInput off Edgetrigger .
-    if( (wantTextInput_prev != io.WantTextInput) ){
-      //OutputDebugStringW( L"Focus lost from TextInput" );
-      HWND hWnd = static_cast<HWND>( io.ImeWindowHandle );
-      if( hWnd ){
-        if((!io.WantTextInput )){ // off
-          HIMC hImc = ImmAssociateContext( hWnd , nullptr );
-          VERIFY( ::SetProp( hWnd , TEXT("DearImGuiIMEContext") , (HANDLE) hImc ) );
-        }else{ // on 
-          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("DearImGuiIMEContext") );
-          if( hImc ){
-            ImmAssociateContext( hWnd , hImc );
-          }
-        }
-      }
-
-    }
-    wantTextInput_prev = io.WantTextInput;
-  }
   
   if( is_open ){
     ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f);
@@ -87,6 +65,7 @@ ImGUIIMMCommunication::operator()()
     ImGui::End();
     ImGui::PopStyleVar();
 
+    
 
     /* Draw Candidate List */
     if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
@@ -111,8 +90,6 @@ ImGUIIMMCommunication::operator()()
                      [&](auto &item){
                        listbox_items.push_back( item.c_str() );
                      });
-      static int listbox_item_current = 0;
-      listbox_item_current = (int)candidate_selection;
 
       /* もし candidate window が画面の外に出ることがあるのならば、上に表示する */
       const float candidate_window_height =
@@ -126,30 +103,64 @@ ImGUIIMMCommunication::operator()()
       
       ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
 
-      ImGui::BeginTooltip();
-      {
-        
-        ImGui::ListBox( "##IMECandidateListWindow" , &listbox_item_current ,
-                        listbox_items.data() , static_cast<int>( std::size( listbox_items ) ),
-                        std::min<int>(candidate_window_num, static_cast<int>(std::size( listbox_items ))));
-        ImGui::Text("%d/%d",
-                    candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
-        
-#if defined( _DEBUG )
-        ImGui::SameLine();
-        ImGui::TextColored( ImVec4(1.0f, 0.0f, 0.0f, 0.5f) , "%s",
-# if defined( UNICODE )
-                            u8" DEBUG (UNICODE)"
-# else 
-                            u8" DEBUG (MBCS)"
-# endif /* defined( UNICODE ) */
-                            );
-#endif /* defined( DEBUG ) */
-        
+      // TODO どのような理由で listbox_item_current が変更されたのかを保持していないとだめか
+      // 
+      //ImGui::EndTooltip();
+      //ImGui::SetNextWindowFocus();
+      //ImGui::OpenPopup("IMECandidateWindow");
+      ImGui::BeginTooltip(); // 一番マシなのがコレ
+      if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
+                                static_cast<int>(std::size( listbox_items )),
+                                static_cast<int>(std::size( listbox_items )))){
+        int i = 0;
+        for( auto const &listbox_item : listbox_items ){
+          if( ImGui::Selectable( listbox_item , ( i++ == candidate_selection ) ) ){
+            // handle selection
+            OutputDebugStringW(L"selected!\n" );
+            ImGui::SetKeyboardFocusHere(-1);
+          }
+        }
       }
+      ImGui::ListBoxFooter();
+      ImGui::Text("%d/%d",
+                  candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
+#if defined( _DEBUG )
+      ImGui::SameLine();
+      ImGui::TextColored( ImVec4(1.0f, 0.0f, 0.0f, 0.5f) , "%s",
+# if defined( UNICODE )
+                          u8"DEBUG (UNICODE)"
+# else 
+                          u8"DEBUG (MBCS)"
+# endif /* defined( UNICODE ) */
+                          );
+#endif /* defined( DEBUG ) */
       ImGui::EndTooltip();
     }
   }
+
+  
+  { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
+    static bool wantTextInput_prev = io.WantTextInput;
+
+    // detect io.WantTextInput off Edgetrigger .
+    if( (wantTextInput_prev != io.WantTextInput) ){
+      //OutputDebugStringW( L"Focus lost from TextInput" );
+      HWND hWnd = static_cast<HWND>( io.ImeWindowHandle );
+      if( hWnd ){
+        if((!io.WantTextInput )){ // off
+          HIMC hImc = ImmAssociateContext( hWnd , nullptr );
+          VERIFY( ::SetProp( hWnd , TEXT("DearImGuiIMEContext") , (HANDLE) hImc ) );
+        }else{ // on 
+          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("DearImGuiIMEContext") );
+          if( hImc ){
+            ImmAssociateContext( hWnd , hImc );
+          }
+        }
+      }
+    }
+    wantTextInput_prev = io.WantTextInput;
+  }
+  
   return;
 }
 
