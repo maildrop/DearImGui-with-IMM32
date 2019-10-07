@@ -43,7 +43,8 @@ namespace imgex{
     {
       return static_cast<unsigned int>( first ) | composite_flags_0( tail... );
     }
-  }
+  } // end of namespace implements;
+
   template<typename require_t,typename ... tail_t>
   constexpr inline require_t
   composite_flags( tail_t ... tail )
@@ -55,27 +56,54 @@ namespace imgex{
   {
     return TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572");
   }
+
+  inline bool imm_associate_context_enable( HWND const hWnd )
+  {
+    VERIFY_ASSERT( NULL != hWnd );
+    VERIFY_ASSERT( IsWindow( hWnd ) );
+    if( hWnd ){
+      HIMC const hImc = reinterpret_cast<HIMC>( GetProp( hWnd, imm_associate_property_name() ) );
+      if( hImc ){
+        VERIFY( NULL == ImmAssociateContext( hWnd , hImc ) );
+        VERIFY( SetProp( hWnd , imm_associate_property_name() , nullptr ) );
+      }
+      return true;
+    }
+    return false;
+  }
+
+  inline bool imm_associate_context_disable( HWND const hWnd )
+  {
+    VERIFY_ASSERT( NULL != hWnd );
+    VERIFY_ASSERT( IsWindow( hWnd ) );
+    if( hWnd ){
+      HIMC hImc = reinterpret_cast<HIMC>( GetProp( hWnd, imm_associate_property_name() ) );
+      if( !hImc ){
+        VERIFY_ASSERT( NULL == hImc || !"window property dose not have HIMC");
+        VERIFY( hImc = ImmAssociateContext( hWnd, nullptr ) );
+        VERIFY( SetProp( hWnd , imm_associate_property_name(), hImc ) );
+      }
+      return true;
+    }
+    return false;
+  }
+
+#if 0
   inline bool imm_associate_context( HWND const hWnd , bool const value )
   {
-    if( IsWindow( hWnd ) ){
-      HIMC const hImc = reinterpret_cast<HIMC>(GetProp( hWnd, imm_associate_property_name() ));
-      bool const associate_status = (( nullptr == hImc ) ? true : false);
-      if( !( associate_status == value )){
-        if( value ){
-          if( hImc ){
-            ImmAssociateContext( hWnd , hImc );
-            VERIFY( SetProp( hWnd , imm_associate_property_name() , nullptr ) );
-          }
-        }else{
-          HIMC const storeContext = ImmAssociateContext( hWnd , nullptr );
-          if( storeContext ){
-            VERIFY( SetProp( hWnd , imm_associate_property_name() , storeContext ) );
-          }
-        }
+    VERIFY_ASSERT( NULL != hWnd );
+    VERIFY_ASSERT( IsWindow( hWnd ) );
+    if( hWnd && IsWindow( hWnd ) ){
+      if( value ){
+        return imm_associate_context_enable( hWnd );
+      }else{
+        return imm_associate_context_disable( hWnd );
       }
     }
-    return TRUE;
+    return false;
   }
+#endif
+  
   inline bool imm_associate_context_cleanup( HWND const hWnd ){
     if( IsWindow( hWnd )){
       HIMC const hImc = reinterpret_cast<HIMC>( RemoveProp( hWnd , imm_associate_property_name() ) );

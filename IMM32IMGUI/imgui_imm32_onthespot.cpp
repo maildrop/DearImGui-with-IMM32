@@ -109,6 +109,7 @@ ImGUIIMMCommunication::operator()()
       //ImGui::SetNextWindowFocus();
       //ImGui::OpenPopup("IMECandidateWindow");
       ImGui::BeginTooltip(); // 一番マシなのがコレ
+      ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
       if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
                                 static_cast<int>(std::size( listbox_items )),
                                 static_cast<int>(std::size( listbox_items )))){
@@ -138,7 +139,33 @@ ImGUIIMMCommunication::operator()()
     }
   }
 
-  
+  /*
+    io.WantTextInput は単純に信用は出来ない。
+    テキストインプットウィジットから、他のウィンドウ上でマウスボタンを押し下げると、
+    WantTextInput が 有効なまま、他のウィンドウとウイジットがアクティブになる
+    （特に、 IME candidate window のウイジットが絡むと、
+    押す WantTextInput が有効なまま、フォーカスが、IME candidate Window に移動する。
+    次のフレームで、
+    IME candidate window は、テキストインプット有効ではないので、WantTextInput がオフになる
+    するとここで、IME が無効化されるという現象が起きていた。）
+
+    これは、直感的な挙動に反するので修正を行うが、 無効にする際には、
+    何かのウイジットがウィンドウフォーカスを得ていない場合
+    有効にする際には WantTextInput が真の時 
+    と非対称な形にすることで 違和感を軽減する。
+  */
+  if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
+      if (io.ImeWindowHandle) {
+          imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle));
+      }
+  }
+  if (io.WantTextInput) {
+      if (io.ImeWindowHandle) {
+          imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle));
+      }
+  }
+
+#if 0
   { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
     static bool wantTextInput_prev = io.WantTextInput;
 
@@ -149,9 +176,9 @@ ImGUIIMMCommunication::operator()()
       if( hWnd ){
         if((!io.WantTextInput )){ // off
           HIMC hImc = ImmAssociateContext( hWnd , nullptr );
-          VERIFY( ::SetProp( hWnd , TEXT("DearImGuiIMEContext") , (HANDLE) hImc ) );
+          VERIFY( ::SetProp( hWnd , TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572") , (HANDLE) hImc ) );
         }else{ // on 
-          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("DearImGuiIMEContext") );
+          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572") );
           if( hImc ){
             ImmAssociateContext( hWnd , hImc );
           }
@@ -160,7 +187,8 @@ ImGUIIMMCommunication::operator()()
     }
     wantTextInput_prev = io.WantTextInput;
   }
-  
+#endif
+
   return;
 }
 
@@ -251,6 +279,8 @@ ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , W
   switch( uMsg ){
   case WM_DESTROY:
     {
+      imgex::imm_associate_context_cleanup(hWnd);
+
       if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
         assert(!"RemoveWindowSubclass() failed\n");
       }
@@ -556,7 +586,7 @@ ImGUIIMMCommunication::subclassify(HWND hWnd)
         reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
         reinterpret_cast<DWORD_PTR>(this))) {
         HIMC hImc = ImmAssociateContext(hWnd, nullptr);
-        if (!::SetProp(hWnd, TEXT("DearImGuiIMEContext"), (HANDLE)hImc)) {
+        if (!::SetProp(hWnd, TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572"), (HANDLE)hImc)) {
             assert(!"SetProp failed");
             ImmAssociateContext(hWnd, hImc);
         }
