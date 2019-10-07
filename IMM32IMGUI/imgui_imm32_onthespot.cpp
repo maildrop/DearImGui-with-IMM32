@@ -24,13 +24,45 @@ ImGUIIMMCommunication::operator()()
 {
   ImGuiIO& io = ImGui::GetIO(); 
   
-  if( is_open ){
+  if( is_open ){  
+
+    /* 
+    #1 Candidate List Window の位置に関する保持
+    Candidate List をクリックしたときに、ウィンドウ位置を動かさない。
+    クリック後に、TextInputを復帰させる処理
+
+    see #1 
+    */
+    static ImGuiID lastTextInputFocusId = 0;
+    static ImGuiID lastTextInputNavId = 0;
+    static ImGuiWindow* lastTextInputNavWindow = nullptr;
+    static ImGuiID candidate_window_root_id = 0;
+    static ImVec2 window_pos = ImVec2();
+    static ImVec2 window_pos_pivot = ImVec2();
+
+    if ( candidate_window_root_id && 
+        ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u )== candidate_window_root_id ) ){
+        // 今Candidate Window をフォーカスしている。のでウィンドウ位置を操作しない。
+        ;
+    } else {
+        window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f, ImGui::GetCurrentContext()->PlatformImePos.y); // 
+        window_pos_pivot = ImVec2(0.0f, 0.0f);
+        {
+            ImGuiContext& g = *ImGui::GetCurrentContext();
+            if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
+                // マウスクリックしてる間は、ActiveID が切り替わるので、
+                if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
+                    lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
+                    lastTextInputFocusId = ImGui::GetActiveID();
+                    lastTextInputNavId = ImGui::GetFocusID();
+                }
+            }
+        }
+    }
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+
     ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f);
 
-    ImVec2 window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x +1.0f ,  ImGui::GetCurrentContext()->PlatformImePos.y ); // 
-    ImVec2 window_pos_pivot = ImVec2(0.0f,0.0f);
-
-    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
     
     if (ImGui::Begin("IME Composition Window", &(this->is_open),
@@ -61,6 +93,13 @@ ImGUIIMMCommunication::operator()()
         ImGui::Text(static_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
         ImGui::PopStyleColor();
       }
+      ImGui::SameLine();
+      /*
+      ImGui::Text("%u %u", 
+          candidate_window_root_id ,
+          ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
+      */
+      ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -103,25 +142,43 @@ ImGUIIMMCommunication::operator()()
       
       ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
 
-      // TODO どのような理由で listbox_item_current が変更されたのかを保持していないとだめか
-      // 
-      //ImGui::EndTooltip();
-      //ImGui::SetNextWindowFocus();
-      //ImGui::OpenPopup("IMECandidateWindow");
-      ImGui::BeginTooltip(); // 一番マシなのがコレ
-      ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+
+      ImGui::BeginTooltip(); // Popup よりマシなのがTooltip であった
       if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
                                 static_cast<int>(std::size( listbox_items )),
                                 static_cast<int>(std::size( listbox_items )))){
         int i = 0;
-        for( auto const &listbox_item : listbox_items ){
+        for( const char* &listbox_item : listbox_items ){
           if( ImGui::Selectable( listbox_item , ( i++ == candidate_selection ) ) ){
             // handle selection
-            OutputDebugStringW(L"selected!\n" );
-            ImGui::SetKeyboardFocusHere(-1);
+
+            /* @see IMM32互換性情報.doc from Microsoft */
+            
+            /* Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。*/
+            // ImmNotifyIME(hImc, NI_SELECTCANDIDATESTR,0, candidate_page * candidate_window_num + i))  したい
+
+            {
+              const auto string_length = strlen( listbox_item )+1;
+              std::unique_ptr<char[]> selected_str{ new char[string_length]};
+              std::copy( listbox_item , listbox_item + string_length , selected_str.get() );
+              this->comp_target_utf8.swap( selected_str );
+            }
+              
+            HWND const hWnd = reinterpret_cast<HWND>(io.ImeWindowHandle);
+            PostMessageW(hWnd, WM_APP + 10, 0u, 0u);
+            
+            if (ImGui::IsRootWindowOrAnyChildFocused() &&
+                !ImGui::IsAnyItemActive() &&
+                !ImGui::IsMouseClicked(0)) {
+              if (lastTextInputFocusId && lastTextInputNavId) {
+                ImGui::SetActiveID(lastTextInputFocusId, lastTextInputNavWindow);
+                ImGui::SetFocusID(lastTextInputNavId, lastTextInputNavWindow);
+              }
+            }
           }
         }
       }
+      
       ImGui::ListBoxFooter();
       ImGui::Text("%d/%d",
                   candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
@@ -135,6 +192,11 @@ ImGUIIMMCommunication::operator()()
 # endif /* defined( UNICODE ) */
                           );
 #endif /* defined( DEBUG ) */
+      
+      // #1 ここで作るウィンドウがフォーカスを持ったときには、ウィンドウの位置を変更してはいけない。
+      candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
+
+      ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
       ImGui::EndTooltip();
     }
   }
@@ -557,6 +619,26 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   case WM_INPUTLANGCHANGE:
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
 
+  case WM_APP + 10:
+    {
+      OutputDebugStringW( L"WM_APP+10\n" );
+      ImGuiIO& io = ImGui::GetIO(); 
+      if (comm.comp_conved_utf8) {
+        io.AddInputCharactersUTF8(comm.comp_conved_utf8.get());
+      }
+      if(comm.comp_target_utf8 ){
+        io.AddInputCharactersUTF8(comm.comp_target_utf8.get());
+      }
+      if(comm.comp_unconv_utf8 ){
+        io.AddInputCharactersUTF8(comm.comp_unconv_utf8.get() );
+      }
+      HIMC hImc = ImmGetContext(hWnd);
+      if (hImc) {
+        ImmNotifyIME(hImc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
+        ImmReleaseContext(hWnd, hImc);
+      }
+    }
+    break;
   default:
     break;
   }
