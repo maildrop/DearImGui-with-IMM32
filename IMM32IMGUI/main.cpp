@@ -18,7 +18,6 @@
 #include "imgui_imm32_onthespot.h"
 #endif /* defined( _WIN32 ) */
 
-#include "imgex.hpp"
 
 #include <locale>
 
