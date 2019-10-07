@@ -203,7 +203,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             static char buffer2[1024] = { 0 };
             ImGui::InputText("input1", buffer1, std::extent<decltype(buffer1)>::value);
             ImGui::InputText("input2", buffer2, std::extent<decltype(buffer2)>::value);
-            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+            //ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
         }
         ImGui::End();
 
@@ -222,16 +222,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
         }
 
+        // ごめん手段が思いつかない。
+        // 閉じる要件として、 IsRootwindowOrAnyChildFocused() が false の時っていうのがあるね。
+
         if (ImGui::Begin("number2", nullptr, 
             ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoTitleBar| 
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_AlwaysAutoResize |
+            ImGuiWindowFlags_NoSavedSettings |
             ImGuiWindowFlags_NoFocusOnAppearing|                 
             ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavInputs|
             ImGuiWindowFlags_NoNavFocus )) {
  
             ImGui::Text("Active id : %u , NavWindow : %x %d", ImGui::GetActiveID() , ImGui::GetCurrentContext()->NavWindow , ImGui::GetIO().WantTextInput);
             ImGui::Text("last Active:%u , NavWindow : %x ", lastTextInputFocusId, lastTextInputNavWindow);
-            if (ImGui::Button("popup")) {
+            if (ImGui::ButtonEx("popup",ImVec2(0.0f,0.0f), ImGuiButtonFlags_NoNavFocus)) {
                 /*
                 if (ImGui::IsRootWindowOrAnyChildFocused()) {
                     OutputDebugStringW(L"IsRootWindowOrAnyChildFocused()");
@@ -254,6 +262,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             //    ImGui::SetKeyboardFocusHere(0);
                 OutputDebugStringW(L"popup\n");
             }
+
+            ImGui::SameLine();
+            ImGui::Text("%s", ImGui::IsWindowFocused() ? u8"フォーカスを持ってる" : u8"フォーカスが無い");
+
+
             if (ImGui::Button("hoge")) {
 
 

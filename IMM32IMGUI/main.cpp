@@ -1,4 +1,8 @@
-﻿#include <iostream>
+﻿#include <tchar.h>
+#include <Windows.h>
+#include <commctrl.h>
+
+#include <iostream>
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -9,8 +13,6 @@
 #include <SDL_syswm.h>
 #include <SDL_opengl.h>
 
-#include <Windows.h>
-#include <commctrl.h>
 
 #if defined( _WIN32 )
 #include "imgui_imm32_onthespot.h"
@@ -19,14 +21,6 @@
 #include "imgex.hpp"
 
 #include <locale>
-#include <cassert>
-#if !defined( VERIFY ) 
-# if defined( NDEBUG )
-#  define VERIFY( exp ) do{ exp ; }while( 0 )
-# else /* defined( NDEBUG ) */
-#  define VERIFY( exp ) assert( exp ) 
-# endif /* defined( NDEBUG ) */
-#endif /* !defined( VERIFY ) */
 
 /** コモンコントロールの初期化 */
 static int common_control_initialize();

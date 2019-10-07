@@ -2,6 +2,13 @@
 #if !defined( imgex_hpp_HEADER_GUARD_7556619d_62b7_4f3b_b364_f02af36a3bbc )
 #define imgex_hpp_HEADER_GUARD_7556619d_62b7_4f3b_b364_f02af36a3bbc 1
 
+#if defined( _WIN32 )
+# include <tchar.h>
+# include <Windows.h>
+#endif /* defined( _WIN32 ) */
+
+#include "imgui.h"
+
 #if defined( __cplusplus )
 # include <cassert>
 #else /* defined( __cplusplus ) */
@@ -43,7 +50,41 @@ namespace imgex{
   {
     return static_cast<require_t>( implements::composite_flags_0( tail ... ) );
   }
-  
+
+  static inline constexpr const TCHAR* imm_associate_property_name()
+  {
+    return TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572");
+  }
+  inline bool imm_associate_context( HWND const hWnd , bool const value )
+  {
+    if( IsWindow( hWnd ) ){
+      HIMC const hImc = reinterpret_cast<HIMC>(GetProp( hWnd, imm_associate_property_name() ));
+      bool const associate_status = (( nullptr == hImc ) ? true : false);
+      if( !( associate_status == value )){
+        if( value ){
+          if( hImc ){
+            ImmAssociateContext( hWnd , hImc );
+            VERIFY( SetProp( hWnd , imm_associate_property_name() , nullptr ) );
+          }
+        }else{
+          HIMC const storeContext = ImmAssociateContext( hWnd , nullptr );
+          if( storeContext ){
+            VERIFY( SetProp( hWnd , imm_associate_property_name() , storeContext ) );
+          }
+        }
+      }
+    }
+    return TRUE;
+  }
+  inline bool imm_associate_context_cleanup( HWND const hWnd ){
+    if( IsWindow( hWnd )){
+      HIMC const hImc = reinterpret_cast<HIMC>( RemoveProp( hWnd , imm_associate_property_name() ) );
+      if( hImc ){
+        VERIFY( nullptr == ImmAssociateContext( hWnd, hImc ) );
+      }
+    }
+    return true;
+  }
 }
 
 #endif /* defined( __cplusplus ) */

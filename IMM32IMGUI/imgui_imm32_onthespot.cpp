@@ -3,15 +3,15 @@
    author: TOGURO Mikito , mit@shalab.net
 */
 
+#include <tchar.h>
+#include <Windows.h>
+#include <commctrl.h>
+
 #include "imgui_imm32_onthespot.h"
 
-#if !defined( VERIFY ) 
-# if defined( NDEBUG )
-#  define VERIFY( exp ) do{ exp ; }while( 0 )
-# else /* defined( NDEBUG ) */
-#  define VERIFY( exp ) assert( exp ) 
-# endif /* defined( NDEBUG ) */
-#endif /* !defined( VERIFY ) */
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_impl_sdl.h"
 
 #include <commctrl.h>
 
@@ -533,6 +533,37 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   return ::DefSubclassProc ( hWnd , uMsg, wParam , lParam );
 }
 
+BOOL
+ImGUIIMMCommunication::subclassify(HWND hWnd)
+{
+    assert(IsWindow(hWnd));
+    if (!IsWindow(hWnd)) {
+        return FALSE;
+    }
+
+    /* IME 制御用 imgui_imm32_onthespot では、
+       TextWidget がフォーカスを失ったときに io.WantTextInput が true -> off になるので
+       この時にIMEのステータスを見て、開いていれば閉じる
+       @see ImGUIIMMCommunication::operator()() の先頭
+
+       Dear ImGui の ImGui::IO::ImeWindowHandle は元々 CompositionWindowの位置を指定するために
+       使っていたのでその目的に合致する
+
+       しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
+    */
+    ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
+    if (::SetWindowSubclass(hWnd, ImGUIIMMCommunication::imm_communication_subClassProc,
+        reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
+        reinterpret_cast<DWORD_PTR>(this))) {
+        HIMC hImc = ImmAssociateContext(hWnd, nullptr);
+        if (!::SetProp(hWnd, TEXT("DearImGuiIMEContext"), (HANDLE)hImc)) {
+            assert(!"SetProp failed");
+            ImmAssociateContext(hWnd, hImc);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
 const ImWchar* ImGUIIMMCommunication::getJapaneseGlyphRanges() {
     static constexpr const ImWchar glyphRangesJapanese[] = {
     0x0020, 0x007E, 0x00A2, 0x00A3, 0x00A7, 0x00A8, 0x00AC, 0x00AC, 0x00B0, 0x00B1, 0x00B4, 0x00B4, 0x00B6, 0x00B6, 0x00D7, 0x00D7,

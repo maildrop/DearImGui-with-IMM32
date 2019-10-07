@@ -2,6 +2,9 @@
    Dear ImGui with IME on-the-spot translation routines.
    author: TOGURO Mikito , mit@shalab.net
  */
+
+#include "imgex.hpp"
+
 #pragma once
 #if !defined( IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD )
 #define IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD 1
@@ -14,9 +17,6 @@
 #include <string>
 #include <type_traits>
 
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "imgui_impl_sdl.h"
 
 #include <SDL.h>
 #include <SDL_syswm.h>
@@ -97,37 +97,7 @@ private:
 public:
   static const ImWchar* getJapaneseGlyphRanges();
 
-  inline BOOL
-  subclassify( HWND hWnd )
-  {
-    assert( IsWindow( hWnd ) );
-    if(! IsWindow( hWnd ) ){
-      return FALSE;
-    }
-
-    /* IME 制御用 imgui_imm32_onthespot では、
-       TextWidget がフォーカスを失ったときに io.WantTextInput が true -> off になるので
-       この時にIMEのステータスを見て、開いていれば閉じる 
-       @see ImGUIIMMCommunication::operator()() の先頭
-
-       Dear ImGui の ImGui::IO::ImeWindowHandle は元々 CompositionWindowの位置を指定するために
-       使っていたのでその目的に合致する 
-
-       しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
-    */
-    ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
-    if( ::SetWindowSubclass( hWnd , ImGUIIMMCommunication::imm_communication_subClassProc ,
-                             reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
-                             reinterpret_cast<DWORD_PTR>(this) ) ){
-      HIMC hImc = ImmAssociateContext( hWnd , nullptr );
-      if( ! ::SetProp( hWnd , TEXT( "DearImGuiIMEContext") , (HANDLE) hImc ) ){
-        assert( !"SetProp failed" );
-        ImmAssociateContext( hWnd , hImc );
-      }
-      return TRUE;
-    }
-    return FALSE;
-  }
+  BOOL subclassify(HWND hWnd);
   
   inline BOOL
   subclassify( SDL_Window* window )
