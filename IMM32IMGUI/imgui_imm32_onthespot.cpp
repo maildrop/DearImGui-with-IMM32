@@ -621,7 +621,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
 
   case WM_APP + 10:
     {
-      OutputDebugStringW( L"WM_APP+10\n" );
       ImGuiIO& io = ImGui::GetIO(); 
       if (comm.comp_conved_utf8) {
         io.AddInputCharactersUTF8(comm.comp_conved_utf8.get());
