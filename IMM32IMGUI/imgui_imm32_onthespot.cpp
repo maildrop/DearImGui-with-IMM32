@@ -127,7 +127,7 @@ ImGUIIMMCommunication::operator()()
                   candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
 #if defined( _DEBUG )
       ImGui::SameLine();
-      ImGui::TextColored( ImVec4(1.0f, 0.0f, 0.0f, 0.5f) , "%s",
+      ImGui::TextColored( ImVec4(1.0f, 0.8f, 0.0f, 1.0f) , "%s",
 # if defined( UNICODE )
                           u8"DEBUG (UNICODE)"
 # else 
@@ -156,12 +156,12 @@ ImGUIIMMCommunication::operator()()
   */
   if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
       if (io.ImeWindowHandle) {
-          imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle));
+          VERIFY(imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle)));
       }
   }
   if (io.WantTextInput) {
       if (io.ImeWindowHandle) {
-          imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle));
+          VERIFY(imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle)));
       }
   }
 
