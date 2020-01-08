@@ -171,7 +171,6 @@ ImGUIIMMCommunication::operator()()
 
             これを根拠に SendKey を利用したコードを作成する。
             */
-#if 1
             {
               if (candidate_selection == i) {
                 keybd_event (VK_RIGHT, 0, 0, 0);
@@ -190,25 +189,6 @@ ImGUIIMMCommunication::operator()()
               keybd_event (VK_LEFT, 0, 0, 0);
               keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
             }
-#else /* NI_SELECTCANDIDATESTR を使った方法 動かない */
-            HWND const hWnd = reinterpret_cast<HWND>(io.ImeWindowHandle);
-            HIMC const hImc = ImmGetContext (hWnd);
-            if (hImc) {
-              if (!ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR,0, candidate_page * candidate_window_num + i)) {
-                // 失敗した
-                std::stringstream s;
-                s << candidate_page * candidate_window_num + i << std::endl;
-                OutputDebugStringA (s.str ().c_str ());
-
-                /* 多分、これしたらいけない*/
-                const auto string_length = strlen (listbox_item) + 1;
-                std::unique_ptr<char[]> selected_str{ new char[string_length] };
-                std::copy (listbox_item, listbox_item + string_length, selected_str.get ());
-                this->comp_target_utf8.swap (selected_str);
-              }
-              VERIFY (ImmReleaseContext (hWnd, hImc));
-            }
-#endif
 
             if (ImGui::IsRootWindowOrAnyChildFocused () &&
                 !ImGui::IsAnyItemActive () &&
