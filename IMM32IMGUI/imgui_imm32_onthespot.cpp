@@ -6,6 +6,7 @@
 #include <tchar.h>
 #include <Windows.h>
 #include <commctrl.h>
+#include <sstream>
 
 #include "imgui_imm32_onthespot.h"
 
@@ -112,6 +113,7 @@ ImGUIIMMCommunication::operator()()
       std::vector<const char*> listbox_items ={};
       
       /* ページに分割します */
+      // TODO:candidate_window_num の値に注意 0 除算の可能性がある。
       int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
       int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
       
@@ -147,35 +149,77 @@ ImGUIIMMCommunication::operator()()
       if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
                                 static_cast<int>(std::size( listbox_items )),
                                 static_cast<int>(std::size( listbox_items )))){
-        int i = 0;
+
+        int i = 0; // for の最後で、i をインクリメントしているので、注意 
         for( const char* &listbox_item : listbox_items ){
-          if( ImGui::Selectable( listbox_item , ( i++ == candidate_selection ) ) ){
-            // handle selection
+          if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
+            /* candidate list selection */
+            /*
+            ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
+            Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
+            @see IMM32互換性情報.doc from Microsoft
 
-            /* @see IMM32互換性情報.doc from Microsoft */
-            
-            /* Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。*/
-            // ImmNotifyIME(hImc, NI_SELECTCANDIDATESTR,0, candidate_page * candidate_window_num + i))  したい
+            そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
+            https://github.com/microsoft/DXUT で確認出来る 
+            当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
+            を確認したところ
 
+            L.380から で Candidate List をクリックしたときのコードがある
+
+            どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
+            （なんということ？！）
+
+            これを根拠に SendKey を利用したコードを作成する。
+            */
+#if 1
             {
-              const auto string_length = strlen( listbox_item )+1;
-              std::unique_ptr<char[]> selected_str{ new char[string_length]};
-              std::copy( listbox_item , listbox_item + string_length , selected_str.get() );
-              this->comp_target_utf8.swap( selected_str );
+              if (candidate_selection == i) {
+                keybd_event (VK_RIGHT, 0, 0, 0);
+                keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+              } else {
+                const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
+                const size_t nNumToHit = abs (candidate_selection - i);
+                for (size_t hit = 0; hit < nNumToHit; ++hit) {
+                  keybd_event (nVirtualKey,0,0,0);
+                  keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
+                }
+              }
+              // Do this to close the candidate window without ending composition.
+              keybd_event (VK_RIGHT, 0, 0, 0);
+              keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+              keybd_event (VK_LEFT, 0, 0, 0);
+              keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
             }
-              
+#else /* NI_SELECTCANDIDATESTR を使った方法 動かない */
             HWND const hWnd = reinterpret_cast<HWND>(io.ImeWindowHandle);
-            PostMessageW(hWnd, WM_APP + 10, 0u, 0u);
-            
-            if (ImGui::IsRootWindowOrAnyChildFocused() &&
-                !ImGui::IsAnyItemActive() &&
-                !ImGui::IsMouseClicked(0)) {
+            HIMC const hImc = ImmGetContext (hWnd);
+            if (hImc) {
+              if (!ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR,0, candidate_page * candidate_window_num + i)) {
+                // 失敗した
+                std::stringstream s;
+                s << candidate_page * candidate_window_num + i << std::endl;
+                OutputDebugStringA (s.str ().c_str ());
+
+                /* 多分、これしたらいけない*/
+                const auto string_length = strlen (listbox_item) + 1;
+                std::unique_ptr<char[]> selected_str{ new char[string_length] };
+                std::copy (listbox_item, listbox_item + string_length, selected_str.get ());
+                this->comp_target_utf8.swap (selected_str);
+              }
+              VERIFY (ImmReleaseContext (hWnd, hImc));
+            }
+#endif
+
+            if (ImGui::IsRootWindowOrAnyChildFocused () &&
+                !ImGui::IsAnyItemActive () &&
+                !ImGui::IsMouseClicked (0)) {
               if (lastTextInputFocusId && lastTextInputNavId) {
-                ImGui::SetActiveID(lastTextInputFocusId, lastTextInputNavWindow);
-                ImGui::SetFocusID(lastTextInputNavId, lastTextInputNavWindow);
+                ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
+                ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
               }
             }
           }
+          ++i;
         }
       }
       
@@ -619,25 +663,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   case WM_INPUTLANGCHANGE:
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
 
-  case WM_APP + 10:
-    {
-      ImGuiIO& io = ImGui::GetIO(); 
-      if (comm.comp_conved_utf8) {
-        io.AddInputCharactersUTF8(comm.comp_conved_utf8.get());
-      }
-      if(comm.comp_target_utf8 ){
-        io.AddInputCharactersUTF8(comm.comp_target_utf8.get());
-      }
-      if(comm.comp_unconv_utf8 ){
-        io.AddInputCharactersUTF8(comm.comp_unconv_utf8.get() );
-      }
-      HIMC hImc = ImmGetContext(hWnd);
-      if (hImc) {
-        ImmNotifyIME(hImc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
-        ImmReleaseContext(hWnd, hImc);
-      }
-    }
-    break;
   default:
     break;
   }
