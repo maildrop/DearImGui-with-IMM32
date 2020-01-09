@@ -169,7 +169,7 @@
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
-      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2d.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-MultiByte|Win32'">
@@ -186,7 +186,7 @@
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
-      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2d.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -203,7 +203,7 @@
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
-      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2d.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-MultiByte|x64'">
@@ -220,7 +220,7 @@
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
-      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(OutDir)DearImGUI.lib;$(OutDir)SDL2d.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
