@@ -8,3 +8,11 @@ cd DearImGui-with-IMM32
 vs_custom_build.bat
 ```
 vs_custom_build.bat clones vcpkg and installs SDL2, so it will take some time.
+
+### font license 
+IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf
+```
+Noto is a trademark of Google Inc. Noto fonts are open source. All Noto fonts are published under the SIL Open Font License, Version 1.1. Language data and some sample texts are from the Unicode CLDR project.
+```
+https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL
+
