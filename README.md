@@ -9,6 +9,11 @@ vs_custom_build.bat
 ```
 vs_custom_build.bat clones vcpkg and installs SDL2, so it will take some time.
 
+and 
+
+open file IMM32IMGUI.sln with Visual Studio 2019
+
+
 ### font license 
 IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf
 ```
