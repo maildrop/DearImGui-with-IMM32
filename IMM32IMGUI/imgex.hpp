@@ -15,13 +15,18 @@
 #include <assert.h>
 #endif /* defined( __cplusplus ) */
 
+#if !defined( VERIFY_ASSERT )
+#if defined(IM_ASSERT)
+#define VERIFY_ASSERT( exp ) IM_ASSERT( exp )
+#else /* defined(IM_ASSERT) */
+#define VERIFY_ASSERT( exp ) assert( exp )
+#endif /* defined(IM_ASSERT) */
+#endif /* !defined( VERIFY_ASSERT ) */
+
 #if !defined( VERIFY )
 #if defined( NDEBUG )
-#define VERFIFY( exp ) do{ exp ; }while(0) 
+#define VERIFY( exp ) do{ exp ; }while(0) 
 #else /* defined( NDEBUG ) */
-#if !defined( VERIFY_ASSERT )
-#define VERIFY_ASSERT( exp ) assert( exp )
-#endif /* !defined( VERIFY_ASSERT ) */
 #define VERIFY( exp ) VERIFY_ASSERT( exp )
 #endif /* defined( NDEBUG ) */
 #endif /* !defined( VERIFY ) */
