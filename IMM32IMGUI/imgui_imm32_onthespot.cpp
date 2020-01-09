@@ -160,7 +160,7 @@ ImGUIIMMCommunication::operator()()
             @see IMM32互換性情報.doc from Microsoft
 
             そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
-            https://github.com/microsoft/DXUT で確認出来る 
+            https://github.com/microsoft/DXUT で確認出来る
             当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
             を確認したところ
 
@@ -172,25 +172,32 @@ ImGUIIMMCommunication::operator()()
             これを根拠に SendKey を利用したコードを作成する。
             */
             {
-              if (candidate_selection == i) {
-                keybd_event (VK_RIGHT, 0, 0, 0);
-                keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-              } else {
+              if (candidate_selection != i) {
                 const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
                 const size_t nNumToHit = abs (candidate_selection - i);
                 for (size_t hit = 0; hit < nNumToHit; ++hit) {
-                  keybd_event (nVirtualKey,0,0,0);
+                  keybd_event (nVirtualKey, 0, 0, 0);
                   keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
                 }
+                // Do this to close the candidate window without ending composition.
+                keybd_event (VK_RIGHT, 0, 0, 0);
+                keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+
+                keybd_event (VK_LEFT, 0, 0, 0);
+                keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
               }
-              // Do this to close the candidate window without ending composition.
-              keybd_event (VK_RIGHT, 0, 0, 0);
-              keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-              keybd_event (VK_LEFT, 0, 0, 0);
-              keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
+
+              /*
+               これで、選択された変換候補が末尾の場合は確定、
+               そうでない場合は、次の変換文節を選択させたいのであるが、
+               keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
+               この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
+               WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
+               */
+              this->request_candidate_list_str_commit = true;
             }
 
-            if (ImGui::IsRootWindowOrAnyChildFocused () &&
+            if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
                 !ImGui::IsAnyItemActive () &&
                 !ImGui::IsMouseClicked (0)) {
               if (lastTextInputFocusId && lastTextInputNavId) {
@@ -542,6 +549,12 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         }
         VERIFY( ImmReleaseContext ( hWnd , hImc ) );
       }
+
+      if (comm.request_candidate_list_str_commit) {
+        comm.request_candidate_list_str_commit = false;
+        PostMessage (hWnd, WM_APP + 200, 0, 0);
+      }
+
     } // end of WM_IME_COMPOSITION
 
 #if defined( UNICODE )
@@ -637,12 +650,28 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
 
   case WM_IME_REQUEST:
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
-
+    return ::DefWindowProc (hWnd, uMsg, wParam, lParam);
 
   case WM_INPUTLANGCHANGE:
-    return ::DefWindowProc ( hWnd , uMsg , wParam , lParam );
+    return ::DefWindowProc (hWnd, uMsg, wParam, lParam);
 
+  case (WM_APP + 200):
+  {
+    if (!static_cast<bool>(comm.comp_unconv_utf8) ||
+        '\0' == *(comm.comp_unconv_utf8.get ())) {  // 末尾まで確定している模様
+      HIMC const hImc = ImmGetContext (hWnd);
+      if (hImc) {
+
+        VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
+
+        VERIFY (ImmReleaseContext (hWnd, hImc));
+      }
+    } else {
+      keybd_event (VK_RIGHT, 0, 0, 0);
+      keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+    }
+  }
+  return 1;
   default:
     break;
   }

@@ -70,6 +70,7 @@ struct ImGUIIMMCommunication{
   std::unique_ptr<char[]> comp_target_utf8;
   std::unique_ptr<char[]> comp_unconv_utf8;
   bool show_ime_candidate_list;
+  bool request_candidate_list_str_commit; // 次回の candidate list が更新された後に、次の変換候補へ移る要請をする
   IMMCandidateList candidate_list;
   
   ImGUIIMMCommunication()
@@ -78,6 +79,7 @@ struct ImGUIIMMCommunication{
       comp_target_utf8( nullptr ),
       comp_unconv_utf8( nullptr ),
       show_ime_candidate_list( false ),
+      request_candidate_list_str_commit( false ),
       candidate_list()
   {
   }
