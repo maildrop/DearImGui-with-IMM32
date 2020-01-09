@@ -13,6 +13,8 @@ and
 
 open file IMM32IMGUI.sln with Visual Studio 2019
 
+### Software License
+This software is the MIT License (MIT). (Excluding sample Japanese fonts)
 
 ### font license 
 IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf
