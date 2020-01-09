@@ -258,30 +258,6 @@ ImGUIIMMCommunication::operator()()
       }
   }
 
-#if 0
-  { // Text Widget がフォーカスを失ったときに 、 IME をオフにする
-    static bool wantTextInput_prev = io.WantTextInput;
-
-    // detect io.WantTextInput off Edgetrigger .
-    if( (wantTextInput_prev != io.WantTextInput) ){
-      //OutputDebugStringW( L"Focus lost from TextInput" );
-      HWND hWnd = static_cast<HWND>( io.ImeWindowHandle );
-      if( hWnd ){
-        if((!io.WantTextInput )){ // off
-          HIMC hImc = ImmAssociateContext( hWnd , nullptr );
-          VERIFY( ::SetProp( hWnd , TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572") , (HANDLE) hImc ) );
-        }else{ // on 
-          HIMC hImc = (HIMC) GetProp( hWnd , TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572") );
-          if( hImc ){
-            ImmAssociateContext( hWnd , hImc );
-          }
-        }
-      }
-    }
-    wantTextInput_prev = io.WantTextInput;
-  }
-#endif
-
   return;
 }
 
