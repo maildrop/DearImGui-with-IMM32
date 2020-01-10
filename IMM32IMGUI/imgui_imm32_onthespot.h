@@ -1,7 +1,7 @@
 ﻿/**
    Dear ImGui with IME on-the-spot translation routines.
    author: TOGURO Mikito , mit@shalab.net
- */
+*/
 
 #include "imgex.hpp"
 
@@ -16,7 +16,6 @@
 #include <utility>
 #include <string>
 #include <type_traits>
-
 
 #include <SDL.h>
 #include <SDL_syswm.h>
@@ -85,14 +84,14 @@ struct ImGUIIMMCommunication{
   }
 
   ~ImGUIIMMCommunication() = default;
-   void operator()();
+  void operator()();
 
 private:
   bool update_candidate_window(HWND hWnd);
 
   static LRESULT
   WINAPI imm_communication_subClassProc( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
-                                  UINT_PTR uIdSubclass , DWORD_PTR dwRefData );
+                                         UINT_PTR uIdSubclass , DWORD_PTR dwRefData );
   static LRESULT
   imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
                                             UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm);
@@ -101,6 +100,7 @@ public:
 
   BOOL subclassify(HWND hWnd);
   
+#if defined( SDL_h_ )
   inline BOOL
   subclassify( SDL_Window* window )
   {
@@ -112,7 +112,7 @@ public:
     }
     return FALSE;
   }
-  
+#endif /* defined( SDL_h_ ) */
 };
 
 #endif /* IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD */

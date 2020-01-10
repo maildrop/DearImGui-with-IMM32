@@ -28,11 +28,11 @@ ImGUIIMMCommunication::operator()()
   if( is_open ){  
 
     /* 
-    #1 Candidate List Window の位置に関する保持
-    Candidate List をクリックしたときに、ウィンドウ位置を動かさない。
-    クリック後に、TextInputを復帰させる処理
+       #1 Candidate List Window の位置に関する保持
+       Candidate List をクリックしたときに、ウィンドウ位置を動かさない。
+       クリック後に、TextInputを復帰させる処理
 
-    see #1 
+       see #1 
     */
     static ImGuiID lastTextInputFocusId = 0;
     static ImGuiID lastTextInputNavId = 0;
@@ -42,23 +42,23 @@ ImGUIIMMCommunication::operator()()
     static ImVec2 window_pos_pivot = ImVec2();
 
     if ( candidate_window_root_id && 
-        ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u )== candidate_window_root_id ) ){
-        // 今Candidate Window をフォーカスしている。のでウィンドウ位置を操作しない。
-        ;
+         ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u )== candidate_window_root_id ) ){
+      // 今Candidate Window をフォーカスしている。のでウィンドウ位置を操作しない。
+      ;
     } else {
-        window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f, ImGui::GetCurrentContext()->PlatformImePos.y); // 
-        window_pos_pivot = ImVec2(0.0f, 0.0f);
-        {
-            ImGuiContext& g = *ImGui::GetCurrentContext();
-            if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
-                // マウスクリックしてる間は、ActiveID が切り替わるので、
-                if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
-                    lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
-                    lastTextInputFocusId = ImGui::GetActiveID();
-                    lastTextInputNavId = ImGui::GetFocusID();
-                }
-            }
+      window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f, ImGui::GetCurrentContext()->PlatformImePos.y); // 
+      window_pos_pivot = ImVec2(0.0f, 0.0f);
+      {
+        ImGuiContext& g = *ImGui::GetCurrentContext();
+        if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
+          // マウスクリックしてる間は、ActiveID が切り替わるので、
+          if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
+            lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
+            lastTextInputFocusId = ImGui::GetActiveID();
+            lastTextInputNavId = ImGui::GetFocusID();
+          }
         }
+      }
     }
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
 
@@ -96,9 +96,9 @@ ImGUIIMMCommunication::operator()()
       }
       ImGui::SameLine();
       /*
-      ImGui::Text("%u %u", 
-          candidate_window_root_id ,
-          ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
+        ImGui::Text("%u %u", 
+        candidate_window_root_id ,
+        ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
       */
       ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
     }
@@ -155,21 +155,21 @@ ImGUIIMMCommunication::operator()()
           if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
             /* candidate list selection */
             /*
-            ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
-            Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
-            @see IMM32互換性情報.doc from Microsoft
+              ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
+              Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
+              @see IMM32互換性情報.doc from Microsoft
 
-            そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
-            https://github.com/microsoft/DXUT で確認出来る
-            当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
-            を確認したところ
+              そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
+              https://github.com/microsoft/DXUT で確認出来る
+              当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
+              を確認したところ
 
-            L.380から で Candidate List をクリックしたときのコードがある
+              L.380から で Candidate List をクリックしたときのコードがある
 
-            どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
-            （なんということ？！）
+              どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
+              （なんということ？！）
 
-            これを根拠に SendKey を利用したコードを作成する。
+              これを根拠に SendKey を利用したコードを作成する。
             */
             {
               if (candidate_selection != i) {
@@ -188,12 +188,12 @@ ImGUIIMMCommunication::operator()()
               }
 
               /*
-               これで、選択された変換候補が末尾の場合は確定、
-               そうでない場合は、次の変換文節を選択させたいのであるが、
-               keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
-               この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
-               WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
-               */
+                これで、選択された変換候補が末尾の場合は確定、
+                そうでない場合は、次の変換文節を選択させたいのであるが、
+                keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
+                この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
+                WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
+              */
               this->request_candidate_list_str_commit = true;
             }
 
@@ -247,14 +247,14 @@ ImGUIIMMCommunication::operator()()
     と非対称な形にすることで 違和感を軽減する。
   */
   if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
-      if (io.ImeWindowHandle) {
-          VERIFY(imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle)));
-      }
+    if (io.ImeWindowHandle) {
+      VERIFY(imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle)));
+    }
   }
   if (io.WantTextInput) {
-      if (io.ImeWindowHandle) {
-          VERIFY(imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle)));
-      }
+    if (io.ImeWindowHandle) {
+      VERIFY(imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle)));
+    }
   }
 
   return;
@@ -550,16 +550,16 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         // このために、IMN_CHANGECANDIDATE が立ち上がった時に変更する
         comm.show_ime_candidate_list = true; 
 #if 0
-          if (IMN_OPENCANDIDATE == wParam) {
-            OutputDebugStringW(L"IMN_OPENCANDIDATE\n");
-          }
+        if (IMN_OPENCANDIDATE == wParam) {
+          OutputDebugStringW(L"IMN_OPENCANDIDATE\n");
+        }
 #endif
         ; // tear down;
       case IMN_CHANGECANDIDATE:
         {
 #if 0
           if (IMN_CHANGECANDIDATE == wParam) {
-              OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
+            OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
           }
 #endif
           
@@ -631,22 +631,22 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     return ::DefWindowProc (hWnd, uMsg, wParam, lParam);
 
   case (WM_APP + 200):
-  {
-    if (!static_cast<bool>(comm.comp_unconv_utf8) ||
-        '\0' == *(comm.comp_unconv_utf8.get ())) {  // 末尾まで確定している模様
-      HIMC const hImc = ImmGetContext (hWnd);
-      if (hImc) {
+    {
+      if (!static_cast<bool>(comm.comp_unconv_utf8) ||
+          '\0' == *(comm.comp_unconv_utf8.get ())) {  // 末尾まで確定している模様
+        HIMC const hImc = ImmGetContext (hWnd);
+        if (hImc) {
 
-        VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
+          VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
 
-        VERIFY (ImmReleaseContext (hWnd, hImc));
+          VERIFY (ImmReleaseContext (hWnd, hImc));
+        }
+      } else {
+        keybd_event (VK_RIGHT, 0, 0, 0);
+        keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
       }
-    } else {
-      keybd_event (VK_RIGHT, 0, 0, 0);
-      keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
     }
-  }
-  return 1;
+    return 1;
   default:
     break;
   }
@@ -656,36 +656,37 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
 BOOL
 ImGUIIMMCommunication::subclassify(HWND hWnd)
 {
-    assert(IsWindow(hWnd));
-    if (!IsWindow(hWnd)) {
-        return FALSE;
-    }
-
-    /* IME 制御用 imgui_imm32_onthespot では、
-       TextWidget がフォーカスを失ったときに io.WantTextInput が true -> off になるので
-       この時にIMEのステータスを見て、開いていれば閉じる
-       @see ImGUIIMMCommunication::operator()() の先頭
-
-       Dear ImGui の ImGui::IO::ImeWindowHandle は元々 CompositionWindowの位置を指定するために
-       使っていたのでその目的に合致する
-
-       しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
-    */
-    ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
-    if (::SetWindowSubclass(hWnd, ImGUIIMMCommunication::imm_communication_subClassProc,
-        reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
-        reinterpret_cast<DWORD_PTR>(this))) {
-        HIMC hImc = ImmAssociateContext(hWnd, nullptr);
-        if (!::SetProp(hWnd, TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572"), (HANDLE)hImc)) {
-            assert(!"SetProp failed");
-            ImmAssociateContext(hWnd, hImc);
-        }
-        return TRUE;
-    }
+  assert(IsWindow(hWnd));
+  if (!IsWindow(hWnd)) {
     return FALSE;
+  }
+
+  /* IME 制御用 imgui_imm32_onthespot では、
+     TextWidget がフォーカスを失ったときに io.WantTextInput が true -> off になるので
+     この時にIMEのステータスを見て、開いていれば閉じる
+     @see ImGUIIMMCommunication::operator()() の先頭
+
+     Dear ImGui の ImGui::IO::ImeWindowHandle は元々 CompositionWindowの位置を指定するために
+     使っていたのでその目的に合致する
+
+     しかしながらこの方法は、ターゲットになるOSのウィンドウが複数になると、破綻するので筋が良くない
+  */
+  ImGui::GetIO().ImeWindowHandle = static_cast<void*>(hWnd);
+  if (::SetWindowSubclass(hWnd, ImGUIIMMCommunication::imm_communication_subClassProc,
+                          reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
+                          reinterpret_cast<DWORD_PTR>(this))) {
+    HIMC hImc = ImmAssociateContext(hWnd, nullptr);
+    if (!::SetProp(hWnd, TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572"), (HANDLE)hImc)) {
+      assert(!"SetProp failed");
+      ImmAssociateContext(hWnd, hImc);
+    }
+    return TRUE;
+  }
+  return FALSE;
 }
+
 const ImWchar* ImGUIIMMCommunication::getJapaneseGlyphRanges() {
-    static constexpr const ImWchar glyphRangesJapanese[] = {
+  static constexpr const ImWchar glyphRangesJapanese[] = {
     0x0020, 0x007E, 0x00A2, 0x00A3, 0x00A7, 0x00A8, 0x00AC, 0x00AC, 0x00B0, 0x00B1, 0x00B4, 0x00B4, 0x00B6, 0x00B6, 0x00D7, 0x00D7,
     0x00F7, 0x00F7, 0x0391, 0x03A1, 0x03A3, 0x03A9, 0x03B1, 0x03C1, 0x03C3, 0x03C9, 0x0401, 0x0401, 0x0410, 0x044F, 0x0451, 0x0451,
     0x2010, 0x2010, 0x2015, 0x2016, 0x2018, 0x2019, 0x201C, 0x201D, 0x2020, 0x2021, 0x2025, 0x2026, 0x2030, 0x2030, 0x2032, 0x2033,
@@ -1202,7 +1203,7 @@ const ImWchar* ImGUIIMMCommunication::getJapaneseGlyphRanges() {
     0x9F4E, 0x9F4F, 0x9F52, 0x9F52, 0x9F54, 0x9F54, 0x9F5F, 0x9F63, 0x9F66, 0x9F67, 0x9F6A, 0x9F6A, 0x9F6C, 0x9F6C, 0x9F72, 0x9F72,
     0x9F76, 0x9F77, 0x9F8D, 0x9F8D, 0x9F95, 0x9F95, 0x9F9C, 0x9F9D, 0x9FA0, 0x9FA0, 0xFF01, 0xFF01, 0xFF03, 0xFF06, 0xFF08, 0xFF0C,
     0xFF0E, 0xFF3B, 0xFF3D, 0xFF5D, 0xFF61, 0xFF9F, 0xFFE3, 0xFFE3, 0xFFE5, 0xFFE5, 0xFFFF, 0xFFFF, 0,
-    };
-    return glyphRangesJapanese;
+  };
+  return glyphRangesJapanese;
 }
 

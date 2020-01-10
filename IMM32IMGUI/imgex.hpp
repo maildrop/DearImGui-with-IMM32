@@ -25,7 +25,7 @@
 
 #if !defined( VERIFY )
 #if defined( NDEBUG )
-#define VERIFY( exp ) do{ exp ; }while(0) 
+#define VERIFY( exp ) do{ (void)(exp) ; }while(0) 
 #else /* defined( NDEBUG ) */
 #define VERIFY( exp ) VERIFY_ASSERT( exp )
 #endif /* defined( NDEBUG ) */
@@ -38,13 +38,13 @@ namespace imgex {
   namespace implements {
     template<typename first_t>
     constexpr inline unsigned int
-      composite_flags_0 (first_t first)
+    composite_flags_0 (first_t first)
     {
       return static_cast<unsigned int>(first);
     }
     template<typename first_t, typename ... tail_t>
     constexpr inline unsigned int
-      composite_flags_0 (first_t first, tail_t... tail)
+    composite_flags_0 (first_t first, tail_t... tail)
     {
       return static_cast<unsigned int>(first) | composite_flags_0 (tail...);
     }
@@ -52,7 +52,7 @@ namespace imgex {
 
   template<typename require_t, typename ... tail_t>
   constexpr inline require_t
-    composite_flags (tail_t ... tail)
+  composite_flags (tail_t ... tail)
   {
     return static_cast<require_t>(implements::composite_flags_0 (tail ...));
   }
