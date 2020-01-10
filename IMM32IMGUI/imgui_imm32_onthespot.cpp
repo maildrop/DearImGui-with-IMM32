@@ -208,9 +208,8 @@ ImGUIIMMCommunication::operator()()
           }
           ++i;
         }
+        ImGui::ListBoxFooter ();
       }
-      
-      ImGui::ListBoxFooter();
       ImGui::Text("%d/%d",
                   candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
 #if defined( _DEBUG )
