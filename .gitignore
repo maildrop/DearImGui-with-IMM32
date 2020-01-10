@@ -15,10 +15,10 @@
 
 # Build results
 [Dd]ebug/
-[Dd]ebug-Multibyte/
+[Dd]ebug-MultiByte/
 [Dd]ebugPublic/
 [Rr]elease/
-[Rr]elease-Multibyte/
+[Rr]elease-MultiByte/
 [Rr]eleases/
 x64/
 x86/
