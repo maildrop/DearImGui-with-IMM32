@@ -50,7 +50,7 @@ VERIFY( imguiIMMCommunication.subclassify( window ) );
 
 Declare the function object outside the message loop.
 
-DearImGui-with-IMM32 uses SetWindowSubclass to get IMM32 window messages.
+DearImGui-with-IMM32 uses [SetWindowSubclass()](https://docs.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-setwindowsubclass) to get IMM32 window messages.
 
 ## 3.rendering
 ```
