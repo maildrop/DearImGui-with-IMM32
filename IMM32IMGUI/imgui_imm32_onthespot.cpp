@@ -144,90 +144,96 @@ ImGUIIMMCommunication::operator()()
       
       ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
 
-
-      ImGui::BeginTooltip(); // Popup よりマシなのがTooltip であった
-      if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
-                                static_cast<int>(std::size( listbox_items )),
-                                static_cast<int>(std::size( listbox_items )))){
-
-        int i = 0; // for の最後で、i をインクリメントしているので、注意 
-        for( const char* &listbox_item : listbox_items ){
-          if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
-            /* candidate list selection */
-            /*
-              ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
-              Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
-              @see IMM32互換性情報.doc from Microsoft
-
-              そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
-              https://github.com/microsoft/DXUT で確認出来る
-              当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
-              を確認したところ
-
-              L.380から で Candidate List をクリックしたときのコードがある
-
-              どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
-              （なんということ？！）
-
-              これを根拠に SendKey を利用したコードを作成する。
-            */
-            {
-              if (candidate_selection != i) {
-                const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
-                const size_t nNumToHit = abs (candidate_selection - i);
-                for (size_t hit = 0; hit < nNumToHit; ++hit) {
-                  keybd_event (nVirtualKey, 0, 0, 0);
-                  keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
-                }
-                // Do this to close the candidate window without ending composition.
-                keybd_event (VK_RIGHT, 0, 0, 0);
-                keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-
-                keybd_event (VK_LEFT, 0, 0, 0);
-                keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
-              }
-
+      if( ImGui::Begin( "##Overlay-IME-Candidate-List-Window" ,
+                        &show_ime_candidate_list ,
+                        ImGuiWindowFlags_NoMove |
+                        ImGuiWindowFlags_NoDecoration |
+                        ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoInputs | 
+                        ImGuiWindowFlags_NoSavedSettings |
+                        ImGuiWindowFlags_NoFocusOnAppearing |
+                        ImGuiWindowFlags_NoNav ) ){
+        if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
+                                  static_cast<int>(std::size( listbox_items )),
+                                  static_cast<int>(std::size( listbox_items )))){
+          
+          int i = 0; // for の最後で、i をインクリメントしているので、注意 
+          for( const char* &listbox_item : listbox_items ){
+            if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
+              /* candidate list selection */
               /*
-                これで、選択された変換候補が末尾の場合は確定、
-                そうでない場合は、次の変換文節を選択させたいのであるが、
-                keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
-                この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
-                WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
+                ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
+                Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
+                @see IMM32互換性情報.doc from Microsoft
+                
+                そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
+                https://github.com/microsoft/DXUT で確認出来る
+                当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
+                を確認したところ
+                
+                L.380から で Candidate List をクリックしたときのコードがある
+                
+                どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
+                （なんということ？！）
+                
+                これを根拠に SendKey を利用したコードを作成する。
               */
-              this->request_candidate_list_str_commit = true;
-            }
-
-            if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
-                !ImGui::IsAnyItemActive () &&
-                !ImGui::IsMouseClicked (0)) {
-              if (lastTextInputFocusId && lastTextInputNavId) {
-                ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
-                ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+              {
+                if (candidate_selection != i) {
+                  const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
+                  const size_t nNumToHit = abs (candidate_selection - i);
+                  for (size_t hit = 0; hit < nNumToHit; ++hit) {
+                    keybd_event (nVirtualKey, 0, 0, 0);
+                    keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
+                  }
+                  // Do this to close the candidate window without ending composition.
+                  keybd_event (VK_RIGHT, 0, 0, 0);
+                  keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+                  
+                  keybd_event (VK_LEFT, 0, 0, 0);
+                  keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
+                }
+                
+                /*
+                  これで、選択された変換候補が末尾の場合は確定、
+                  そうでない場合は、次の変換文節を選択させたいのであるが、
+                  keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
+                  この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
+                  WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
+                */
+                this->request_candidate_list_str_commit = true;
+              }
+              
+              if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
+                  !ImGui::IsAnyItemActive () &&
+                  !ImGui::IsMouseClicked (0)) {
+                if (lastTextInputFocusId && lastTextInputNavId) {
+                  ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
+                  ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+                }
               }
             }
+            ++i;
           }
-          ++i;
+          ImGui::ListBoxFooter ();
         }
-        ImGui::ListBoxFooter ();
-      }
-      ImGui::Text("%d/%d",
-                  candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
+        ImGui::Text("%d/%d",
+                    candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
 #if defined( _DEBUG )
-      ImGui::SameLine();
-      ImGui::TextColored( ImVec4(1.0f, 0.8f, 0.0f, 1.0f) , "%s",
+        ImGui::SameLine();
+        ImGui::TextColored( ImVec4(1.0f, 0.8f, 0.0f, 1.0f) , "%s",
 # if defined( UNICODE )
-                          u8"DEBUG (UNICODE)"
+                            u8"DEBUG (UNICODE)"
 # else 
-                          u8"DEBUG (MBCS)"
+                            u8"DEBUG (MBCS)"
 # endif /* defined( UNICODE ) */
-                          );
+                            );
 #endif /* defined( DEBUG ) */
-      
-      // #1 ここで作るウィンドウがフォーカスを持ったときには、ウィンドウの位置を変更してはいけない。
-      candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
-
-      ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-      ImGui::EndTooltip();
+        // #1 ここで作るウィンドウがフォーカスを持ったときには、ウィンドウの位置を変更してはいけない。
+        candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+      }
+      ImGui::End();
     }
   }
 
