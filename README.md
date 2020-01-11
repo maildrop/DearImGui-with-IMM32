@@ -25,7 +25,8 @@ https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL
 
 ## widgetTest project
 
-Add ImGuiColorTextEdit to widgetTest and check the operation.
+Add [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) to widgetTest and check the operation.
+Unfortunately, I needed to add a bit of code to set the position of the IME Window. [Forked](https://github.com/maildrop/ImGuiColorTextEdit) for this. [maildrop/ImGuiColorTextEdit](https://github.com/maildrop/ImGuiColorTextEdit)
 
 ![TextEditor](https://raw.githubusercontent.com/maildrop/DearImGui-with-IMM32/master/doc/ImGui-TextEditor-IMM-Candidate-List.png)
 
