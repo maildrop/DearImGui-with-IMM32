@@ -47,5 +47,8 @@
     <ClInclude Include="..\IMM32IMGUI\glyph-ranges-ja.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="..\IMM32IMGUI\imgui_imm32_onthespot_sdl.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

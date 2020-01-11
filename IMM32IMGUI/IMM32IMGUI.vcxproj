@@ -318,6 +318,7 @@
     <ClInclude Include="glyph-ranges-ja.h" />
     <ClInclude Include="imgex.hpp" />
     <ClInclude Include="imgui_imm32_onthespot.h" />
+    <ClInclude Include="imgui_imm32_onthespot_sdl.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

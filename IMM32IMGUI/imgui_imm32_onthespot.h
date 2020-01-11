@@ -17,9 +17,6 @@
 #include <string>
 #include <type_traits>
 
-#include <SDL.h>
-#include <SDL_syswm.h>
-
 #if defined( _WIN32 ) 
 #include <Windows.h>
 #include <commctrl.h>
@@ -95,24 +92,16 @@ private:
   static LRESULT
   imm_communication_subClassProc_implement( HWND hWnd , UINT uMsg , WPARAM wParam, LPARAM lParam ,
                                             UINT_PTR uIdSubclass , ImGUIIMMCommunication& comm);
+  BOOL subclassify_impl( HWND hWnd );
 public:
-  static const ImWchar* getJapaneseGlyphRanges();
+  template<typename type_t>
+  inline BOOL subclassify(type_t hWnd);
 
-  BOOL subclassify(HWND hWnd);
-  
-#if defined( SDL_h_ )
-  inline BOOL
-  subclassify( SDL_Window* window )
+  template<>
+  inline BOOL subclassify<HWND>( HWND hWnd )
   {
-    SDL_SysWMinfo info{};
-    SDL_VERSION(&info.version);
-    if (SDL_GetWindowWMInfo(window, &info)) {
-      assert(IsWindow(info.info.win.window));
-      return this->subclassify( info.info.win.window );
-    }
-    return FALSE;
+    return subclassify_impl( hWnd );
   }
-#endif /* defined( SDL_h_ ) */
 };
 
 #endif /* IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD */

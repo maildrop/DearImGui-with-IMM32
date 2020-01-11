@@ -13,11 +13,13 @@
 #include <SDL_syswm.h>
 #include <SDL_opengl.h>
 
-
-#if defined( _WIN32 )
 #include "glyph-ranges-ja.h"
+
+#if defined (_WIN32)
 #include "imgui_imm32_onthespot.h"
+#include "imgui_imm32_onthespot_sdl.h"
 #endif /* defined( _WIN32 ) */
+
 
 #include <locale>
 

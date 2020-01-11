@@ -8,11 +8,10 @@
 #include <commctrl.h>
 #include <sstream>
 
-#include "imgui_imm32_onthespot.h"
-
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "imgui_impl_sdl.h"
+
+#include "imgui_imm32_onthespot.h"
 
 #include <commctrl.h>
 
@@ -650,7 +649,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
           To work around this bug, disable it.
           This is because the movement of the focus of the widget and
           the accompanying timing are complicated relationships.
-         */
+        */
         HIMC const hImc = ImmGetContext (hWnd);
         if (hImc) {
           VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
@@ -675,7 +674,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
 }
 
 BOOL
-ImGUIIMMCommunication::subclassify(HWND hWnd)
+ImGUIIMMCommunication::subclassify_impl(HWND hWnd)
 {
   assert(IsWindow(hWnd));
   if (!IsWindow(hWnd)) {
