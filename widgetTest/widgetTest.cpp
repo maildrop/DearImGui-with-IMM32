@@ -13,6 +13,7 @@
 #include <commctrl.h>
 
 #if defined( _WIN32 )
+#include "glyph-ranges-ja.h"
 #include "imgui_imm32_onthespot.h"
 #endif /* defined( _WIN32 ) */
 
@@ -145,9 +146,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }();
 
     io.Fonts->AddFontDefault();
-    io.Fonts->AddFontFromFileTTF("../IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf", 16.0f,
+    io.Fonts->AddFontFromFileTTF("../IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf", 
+                                 16.0f,
                                  &config, 
-                                 ImGUIIMMCommunication::getJapaneseGlyphRanges()); //  io.Fonts->GetGlyphRangesJapanese());
+                                 getJapaneseGlyphRanges()); //  io.Fonts->GetGlyphRangesJapanese());
   }
 
   //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);

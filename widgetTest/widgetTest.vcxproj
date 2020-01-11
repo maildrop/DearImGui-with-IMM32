@@ -154,11 +154,13 @@
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_opengl2.cpp" />
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_sdl.cpp" />
     <ClCompile Include="..\ImGuiColorTextEdit\TextEditor.cpp" />
+    <ClCompile Include="..\IMM32IMGUI\glyph-ranges-ja.cpp" />
     <ClCompile Include="..\IMM32IMGUI\imgui_imm32_onthespot.cpp" />
     <ClCompile Include="widgetTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ImGuiColorTextEdit\TextEditor.h" />
+    <ClInclude Include="..\IMM32IMGUI\glyph-ranges-ja.h" />
     <ClInclude Include="..\IMM32IMGUI\imgex.hpp" />
     <ClInclude Include="..\IMM32IMGUI\imgui_imm32_onthespot.h" />
   </ItemGroup>
