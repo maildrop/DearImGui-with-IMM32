@@ -33,9 +33,9 @@ Add ImGuiColorTextEdit to widgetTest and check the operation.
 
 ## 1.include 
 ```
-#if defined( _WIN32 )
+#if defined (_WIN32)
 #include "imgui_imm32_onthespot.h"
-#include "imgex.hpp"
+#include "imgui_imm32_onthespot_sdl.h" /* If you are using SDL, include imgui_imm32_onthesport_sdl.h */
 #endif /* defined( _WIN32 ) */
 ```
 
