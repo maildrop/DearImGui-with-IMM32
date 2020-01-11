@@ -1,3 +1,6 @@
 [submodule "DearImGUI/imgui"]
 	path = DearImGUI/imgui
 	url = git@github.com:ocornut/imgui.git
+[submodule "ImGuiColorTextEdit"]
+	path = ImGuiColorTextEdit
+	url = git@github.com:maildrop/ImGuiColorTextEdit.git
