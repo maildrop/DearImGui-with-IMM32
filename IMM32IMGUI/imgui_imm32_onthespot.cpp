@@ -490,20 +490,47 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     std::wstring を std::unique_ptr<char[]> に UTF-8 のnull 終端文字列にして変換する
                     引数が空文字列の場合は nullptr が入る
                   */
-                  auto toutf8 = [](const std::wstring& arg )->std::unique_ptr<char[]>{
+                  auto to_utf8_pointer = [](const std::wstring& arg )->std::unique_ptr<char[]>{
                     if( arg.empty() ){
                       return std::unique_ptr<char[]>( nullptr );
                     }
                     const int require_byte = WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1 , nullptr , 0 , NULL , NULL );
+                    if ( 0 == require_byte) {
+                      const DWORD lastError = GetLastError ();
+                      (void)(lastError);
+                      IM_ASSERT (ERROR_INSUFFICIENT_BUFFER != lastError);
+                      IM_ASSERT (ERROR_INVALID_FLAGS != lastError);
+                      IM_ASSERT (ERROR_INVALID_PARAMETER != lastError);
+                      IM_ASSERT (ERROR_NO_UNICODE_TRANSLATION != lastError);
+                    }
+                    IM_ASSERT (0 != require_byte);
+                    if ( !(0 < require_byte) ) {
+                      return std::unique_ptr<char[]> (nullptr);
+                    }
+
                     std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
-                    if( require_byte != WideCharToMultiByte( CP_UTF8 , 0 , arg.c_str() , -1, utf8buf.get(), require_byte , NULL , NULL ) ){
+
+                    const int conversion_result =
+                      WideCharToMultiByte (CP_UTF8, 0, arg.c_str (), -1, utf8buf.get (), require_byte, NULL, NULL);
+                    if (conversion_result == 0) {
+                      const DWORD lastError = GetLastError ();
+                      (void)(lastError);
+                      IM_ASSERT (ERROR_INSUFFICIENT_BUFFER != lastError);
+                      IM_ASSERT (ERROR_INVALID_FLAGS != lastError);
+                      IM_ASSERT (ERROR_INVALID_PARAMETER != lastError);
+                      IM_ASSERT (ERROR_NO_UNICODE_TRANSLATION != lastError);
+                    }
+
+                    IM_ASSERT (require_byte == conversion_result);
+                    if (require_byte != conversion_result) {
                       utf8buf.reset( nullptr );
                     }
                     return utf8buf;
                   };
-                  comm.comp_conved_utf8 = toutf8( comp_converted );
-                  comm.comp_target_utf8 = toutf8( comp_target ) ;
-                  comm.comp_unconv_utf8 = toutf8( comp_unconveted );
+
+                  comm.comp_conved_utf8 = to_utf8_pointer( comp_converted );
+                  comm.comp_target_utf8 = to_utf8_pointer( comp_target ) ;
+                  comm.comp_unconv_utf8 = to_utf8_pointer( comp_unconveted );
 
                   /* Google IME は GCS_COMPSTR の更新が行われたときには、当然 IMN_CHANGECANDIDATE
                      が行われたものとして、送ってこない。
@@ -518,7 +545,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                       comm.candidate_list.clear(); 
                     }
                   }
-                  
                 }
               }
             }
