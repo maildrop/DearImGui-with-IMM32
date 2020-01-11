@@ -30,6 +30,8 @@ Add ImGuiColorTextEdit to widgetTest and check the operation.
 ![TextEditor](https://raw.githubusercontent.com/maildrop/DearImGui-with-IMM32/master/doc/ImGui-TextEditor-IMM-Candidate-List.png)
 
 # How to usage
+
+## 1.include 
 ```
 #if defined( _WIN32 )
 #include "imgui_imm32_onthespot.h"
@@ -39,6 +41,8 @@ Add ImGuiColorTextEdit to widgetTest and check the operation.
 
 Include the necessary header files.
 
+
+## 2.declare
 ```
 ImGUIIMMCommunication imguiIMMCommunication{}; 
 VERIFY( imguiIMMCommunication.subclassify( window ) );
@@ -48,6 +52,7 @@ Declare the function object outside the message loop.
 
 DearImGui-with-IMM32 uses SetWindowSubclass to get IMM32 window messages.
 
+## 3.rendering
 ```
 imguiIMMCommunication(); 
 // Rendering
