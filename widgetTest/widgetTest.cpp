@@ -14,10 +14,12 @@
 
 #if defined( _WIN32 )
 #include "glyph-ranges-ja.h"
-#include "imgui_imm32_onthespot.h"
 #endif /* defined( _WIN32 ) */
 
+#if defined( _WIN32 )
+#include "imgui_imm32_onthespot.h"
 #include "imgex.hpp"
+#endif /* defined( _WIN32 ) */
 
 #include "TextEditor.h"
 
