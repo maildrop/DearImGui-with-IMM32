@@ -31,6 +31,10 @@ Add ImGuiColorTextEdit to widgetTest and check the operation.
 
 # How to usage
 
+## example 
+- https://github.com/maildrop/DearImGui-with-IMM32/blob/master/IMM32IMGUI/main.cpp
+- https://github.com/maildrop/DearImGui-with-IMM32/blob/master/widgetTest/widgetTest.cpp
+
 ## 1.include 
 ```
 #if defined (_WIN32)
@@ -55,9 +59,6 @@ DearImGui-with-IMM32 uses [SetWindowSubclass()](https://docs.microsoft.com/en-us
 ## 3.rendering
 ```
 imguiIMMCommunication(); 
-// Rendering
-ImGui::Render();
 ```
 Finally, call the function object.
-
 
