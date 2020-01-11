@@ -24,20 +24,18 @@ void
 ImGUIIMMCommunication::operator()()
 {
   ImGuiIO& io = ImGui::GetIO(); 
-  
   if( is_open ){  
-
     /* 
        #1 Candidate List Window の位置に関する保持
        Candidate List をクリックしたときに、ウィンドウ位置を動かさない。
        クリック後に、TextInputを復帰させる処理
-
        see #1 
     */
     static ImGuiID lastTextInputFocusId = 0;
     static ImGuiID lastTextInputNavId = 0;
     static ImGuiWindow* lastTextInputNavWindow = nullptr;
     static ImGuiID candidate_window_root_id = 0;
+
     static ImVec2 window_pos = ImVec2();
     static ImVec2 window_pos_pivot = ImVec2();
 
