@@ -23,3 +23,9 @@ Noto is a trademark of Google Inc. Noto fonts are open source. All Noto fonts ar
 ```
 https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL
 
+## widgetTest project
+
+Add ImGuiColorTextEdit to widgetTest and check the operation.
+
+![TextEditor](https://raw.githubusercontent.com/maildrop/DearImGui-with-IMM32/master/doc/ImGui-TextEditor-IMM-Candidate-List.png)
+
