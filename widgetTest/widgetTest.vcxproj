@@ -89,7 +89,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>SDL_MAIN_HANDLED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)ImGuiColorTextEdit;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>SDL_MAIN_HANDLED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)ImGuiColorTextEdit;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
@@ -121,7 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>SDL_MAIN_HANDLED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)ImGuiColorTextEdit;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
@@ -140,7 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>SDL_MAIN_HANDLED=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)vcpkg\installed\x64-windows\include\SDL2;$(SolutionDir)DearImGUI\imgui;$(SolutionDir)DearImGUI\imgui\examples;$(SolutionDir)ImGuiColorTextEdit;$(SolutionDir)\IMM32IMGUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
@@ -153,10 +153,12 @@
   <ItemGroup>
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_opengl2.cpp" />
     <ClCompile Include="..\DearImGUI\imgui\examples\imgui_impl_sdl.cpp" />
+    <ClCompile Include="..\ImGuiColorTextEdit\TextEditor.cpp" />
     <ClCompile Include="..\IMM32IMGUI\imgui_imm32_onthespot.cpp" />
     <ClCompile Include="widgetTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ImGuiColorTextEdit\TextEditor.h" />
     <ClInclude Include="..\IMM32IMGUI\imgex.hpp" />
     <ClInclude Include="..\IMM32IMGUI\imgui_imm32_onthespot.h" />
   </ItemGroup>

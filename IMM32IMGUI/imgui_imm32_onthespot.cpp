@@ -46,10 +46,11 @@ ImGUIIMMCommunication::operator()()
     } else {
       window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f, ImGui::GetCurrentContext()->PlatformImePos.y); // 
       window_pos_pivot = ImVec2(0.0f, 0.0f);
+      
       {
         ImGuiContext& g = *ImGui::GetCurrentContext();
         if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
-          // マウスクリックしてる間は、ActiveID が切り替わるので、
+          // mouse press してる間は、ActiveID が切り替わるので、
           if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
             lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
             lastTextInputFocusId = ImGui::GetActiveID();
@@ -102,9 +103,7 @@ ImGUIIMMCommunication::operator()()
     }
     ImGui::End();
     ImGui::PopStyleVar();
-
     
-
     /* Draw Candidate List */
     if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
       
@@ -200,6 +199,7 @@ ImGUIIMMCommunication::operator()()
                   WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
                 */
                 this->request_candidate_list_str_commit = true;
+
               }
               
               if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
@@ -637,15 +637,32 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   case (WM_APP + 200):
     {
       if (!static_cast<bool>(comm.comp_unconv_utf8) ||
-          '\0' == *(comm.comp_unconv_utf8.get ())) {  // 末尾まで確定している模様
+          '\0' == *(comm.comp_unconv_utf8.get ())) {
+        /* There is probably no unconverted string after the conversion target. */
+#if 0
+        /*
+          Here, the expected behavior is to perform the conversion completion
+          operation. 
+          However, there is a bug that the TextInput loses the focus
+          and the conversion result is lost when the conversion
+          complete operation is performed.
+          
+          To work around this bug, disable it.
+          This is because the movement of the focus of the widget and
+          the accompanying timing are complicated relationships.
+         */
         HIMC const hImc = ImmGetContext (hWnd);
         if (hImc) {
-
           VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
-
           VERIFY (ImmReleaseContext (hWnd, hImc));
         }
+#endif
       } else {
+        /* 
+           Since there is an unconverted string after the conversion
+           target, press the right key of the keyboard to convert the
+           next clause to IME.
+        */
         keybd_event (VK_RIGHT, 0, 0, 0);
         keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
       }

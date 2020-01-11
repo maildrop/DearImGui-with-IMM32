@@ -18,6 +18,8 @@
 
 #include "imgex.hpp"
 
+#include "TextEditor.h"
+
 #include <locale>
 #include <cassert>
 #if !defined( VERIFY ) 
@@ -87,10 +89,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
   // Setup SDL
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
-	{
+    {
       printf("Error: %s\n", SDL_GetError());
       return -1;
-	}
+    }
 
   // Setup window
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -143,8 +145,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }();
 
     io.Fonts->AddFontDefault();
-    io.Fonts->AddFontFromFileTTF("NotoSansMonoCJKjp-Regular.otf", 16.0f,
-                                 &config, ImGUIIMMCommunication::getJapaneseGlyphRanges()); //  io.Fonts->GetGlyphRangesJapanese());
+    io.Fonts->AddFontFromFileTTF("../IMM32IMGUI/NotoSansMonoCJKjp-Regular.otf", 16.0f,
+                                 &config, 
+                                 ImGUIIMMCommunication::getJapaneseGlyphRanges()); //  io.Fonts->GetGlyphRangesJapanese());
   }
 
   //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
@@ -160,9 +163,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
   /* IMM32 変更点  #2                            */
   /*********************************************/
   ImGUIIMMCommunication imguiIMMCommunication{};
-
   VERIFY( imguiIMMCommunication.subclassify( window ) );
 
+
+  TextEditor editor{};
+  
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   // Main loop
   for(;;){
@@ -197,87 +202,157 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     {
 
-        if (ImGui::Begin("Input Test")) {
+      if (ImGui::Begin("Input Test")) {
 
-            static char buffer1[1024] = { 0 };
-            static char buffer2[1024] = { 0 };
-            ImGui::InputText("input1", buffer1, std::extent<decltype(buffer1)>::value);
-            ImGui::InputText("input2", buffer2, std::extent<decltype(buffer2)>::value);
-            //ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+        static char buffer1[1024] = { 0 };
+        static char buffer2[1024] = { 0 };
+        ImGui::InputText("input1", buffer1, std::extent<decltype(buffer1)>::value);
+        ImGui::InputText("input2", buffer2, std::extent<decltype(buffer2)>::value);
+        //ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+      }
+      ImGui::End();
+
+      static ImGuiID lastTextInputFocusId = 0;
+      static ImGuiID lastTextInputNavId = 0;
+      static ImGuiWindow* lastTextInputNavWindow = nullptr;
+      {
+        ImGuiContext& g = *GImGui;
+        if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
+          // マウスクリックしてる間は、ActiveID が切り替わるので、
+          if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
+            lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
+            lastTextInputFocusId = ImGui::GetActiveID();
+            lastTextInputNavId = ImGui::GetFocusID();
+          }
         }
-        ImGui::End();
+      }
 
-        static ImGuiID lastTextInputFocusId = 0;
-        static ImGuiID lastTextInputNavId = 0;
-        static ImGuiWindow* lastTextInputNavWindow = nullptr;
-        {
-            ImGuiContext& g = *GImGui;
-            if ((g.WantTextInputNextFrame != -1) ? (g.WantTextInputNextFrame != 0) : false) {
-                // マウスクリックしてる間は、ActiveID が切り替わるので、
-                if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
-                    lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
-                    lastTextInputFocusId = ImGui::GetActiveID();
-                    lastTextInputNavId = ImGui::GetFocusID();
-                }
-            }
-        }
+      // ごめん手段が思いつかない。
+      // 閉じる要件として、 IsRootwindowOrAnyChildFocused() が false の時っていうのがあるね。
 
-        // ごめん手段が思いつかない。
-        // 閉じる要件として、 IsRootwindowOrAnyChildFocused() が false の時っていうのがあるね。
-
-        if (ImGui::Begin("number2", nullptr, 
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoTitleBar| 
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_AlwaysAutoResize |
-            ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoFocusOnAppearing|                 
-            ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoNavInputs|
-            ImGuiWindowFlags_NoNavFocus )) {
+      if (ImGui::Begin("number2", nullptr, 
+                       ImGuiWindowFlags_NoMove |
+                       ImGuiWindowFlags_NoTitleBar| 
+                       ImGuiWindowFlags_NoResize |
+                       ImGuiWindowFlags_NoMove |
+                       ImGuiWindowFlags_AlwaysAutoResize |
+                       ImGuiWindowFlags_NoSavedSettings |
+                       ImGuiWindowFlags_NoFocusOnAppearing|                 
+                       ImGuiWindowFlags_NoBringToFrontOnFocus |
+                       ImGuiWindowFlags_NoNavInputs|
+                       ImGuiWindowFlags_NoNavFocus )) {
  
-            ImGui::Text("Active id : %u , NavWindow : %x %d", ImGui::GetActiveID() , ImGui::GetCurrentContext()->NavWindow , ImGui::GetIO().WantTextInput);
-            ImGui::Text("last Active:%u , NavWindow : %x ", lastTextInputFocusId, lastTextInputNavWindow);
-            if (ImGui::ButtonEx("popup",ImVec2(0.0f,0.0f), ImGuiButtonFlags_NoNavFocus)) {
-                /*
-                if (ImGui::IsRootWindowOrAnyChildFocused()) {
-                    OutputDebugStringW(L"IsRootWindowOrAnyChildFocused()");
-                } else {
-                    OutputDebugStringW(L"! IsRootWindowOrAnyChildFocused()");
-                }
-                */
-                if (ImGui::IsRootWindowOrAnyChildFocused() &&
-                    !ImGui::IsAnyItemActive() &&
-                    !ImGui::IsMouseClicked(0))
-                {
-                    if (lastTextInputFocusId && lastTextInputNavId) {
-                        ImGui::SetActiveID(lastTextInputFocusId, lastTextInputNavWindow);
-                        ImGui::SetFocusID(lastTextInputNavId, lastTextInputNavWindow);
-                    }
-                    // ImGui::SetKeyboardFocusHere(-1);
-                }
+        ImGui::Text("Active id : %u , NavWindow : %x %d", ImGui::GetActiveID() , ImGui::GetCurrentContext()->NavWindow , ImGui::GetIO().WantTextInput);
+        ImGui::Text("last Active:%u , NavWindow : %x ", lastTextInputFocusId, lastTextInputNavWindow);
+        if (ImGui::ButtonEx("popup",ImVec2(0.0f,0.0f), ImGuiButtonFlags_NoNavFocus)) {
+          /*
+            if (ImGui::IsRootWindowOrAnyChildFocused()) {
+            OutputDebugStringW(L"IsRootWindowOrAnyChildFocused()");
+            } else {
+            OutputDebugStringW(L"! IsRootWindowOrAnyChildFocused()");
+            }
+          */
+          if (ImGui::IsRootWindowOrAnyChildFocused() &&
+              !ImGui::IsAnyItemActive() &&
+              !ImGui::IsMouseClicked(0))
+            {
+              if (lastTextInputFocusId && lastTextInputNavId) {
+                ImGui::SetActiveID(lastTextInputFocusId, lastTextInputNavWindow);
+                ImGui::SetFocusID(lastTextInputNavId, lastTextInputNavWindow);
+              }
+              // ImGui::SetKeyboardFocusHere(-1);
+            }
                 
 
-            //    ImGui::SetKeyboardFocusHere(0);
-                OutputDebugStringW(L"popup\n");
-            }
+          //    ImGui::SetKeyboardFocusHere(0);
+          OutputDebugStringW(L"popup\n");
+        }
 
-            ImGui::SameLine();
-            ImGui::Text("%s", ImGui::IsWindowFocused() ? u8"フォーカスを持ってる" : u8"フォーカスが無い");
-
-
-            if (ImGui::Button("hoge")) {
+        ImGui::SameLine();
+        ImGui::Text("%s", ImGui::IsWindowFocused() ? u8"フォーカスを持ってる" : u8"フォーカスが無い");
 
 
-            }
-            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+        if (ImGui::Button("hoge")) {
+
+
+        }
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
             
 
 
-        }
-        ImGui::End();
+      }
+      ImGui::End();
     }
+
+    auto cpos = editor.GetCursorPosition();
+    ImGui::Begin("Text Editor Demo", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+    ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+    if (ImGui::BeginMenuBar())
+      {
+        if (ImGui::BeginMenu("File"))
+          {
+            if (ImGui::MenuItem("Save"))
+              {
+                auto textToSave = editor.GetText();
+                /// save text....
+              }
+            if (ImGui::MenuItem("Quit", "Alt-F4"))
+              break;
+            ImGui::EndMenu();
+          }
+        if (ImGui::BeginMenu("Edit"))
+          {
+            bool ro = editor.IsReadOnly();
+            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+              editor.SetReadOnly(ro);
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
+              editor.Undo();
+            if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+              editor.Redo();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+              editor.Copy();
+            if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+              editor.Cut();
+            if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
+              editor.Delete();
+            if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+              editor.Paste();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Select all", nullptr, nullptr))
+              editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+            ImGui::EndMenu();
+          }
+
+        if (ImGui::BeginMenu("View"))
+          {
+            if (ImGui::MenuItem("Dark palette"))
+              editor.SetPalette(TextEditor::GetDarkPalette());
+            if (ImGui::MenuItem("Light palette"))
+              editor.SetPalette(TextEditor::GetLightPalette());
+            if (ImGui::MenuItem("Retro blue palette"))
+              editor.SetPalette(TextEditor::GetRetroBluePalette());
+            ImGui::EndMenu();
+          }
+        ImGui::EndMenuBar();
+      }
+    /*
+      ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+      editor.IsOverwrite() ? "Ovr" : "Ins",
+      editor.CanUndo() ? "*" : " ",
+      editor.GetLanguageDefinition().mName.c_str(), fileToEdit);
+    */
+                
+    editor.Render("TextEditor");
+    ImGui::End();
+
     /*********************************************/
     /* IMM32 変更点  #3                            */
     /*********************************************/
@@ -293,7 +368,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(window);
   }
-END_OF_MAIN_LOOP:
+ END_OF_MAIN_LOOP:
 
   // Cleanup
   ImGui_ImplOpenGL2_Shutdown();
