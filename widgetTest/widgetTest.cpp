@@ -246,7 +246,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             OutputDebugStringW(L"! IsRootWindowOrAnyChildFocused()");
             }
           */
-          if (ImGui::IsRootWindowOrAnyChildFocused() &&
+          if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
               !ImGui::IsAnyItemActive() &&
               !ImGui::IsMouseClicked(0))
             {
