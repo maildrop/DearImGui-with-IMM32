@@ -28,6 +28,15 @@ https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=OFL
 Add [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) to widgetTest and check the operation.
 Unfortunately, I needed to add a bit of code to set the position of the IME Window. [Forked](https://github.com/maildrop/ImGuiColorTextEdit) for this. [maildrop/ImGuiColorTextEdit](https://github.com/maildrop/ImGuiColorTextEdit)
 
+ImGuiColorTextEdit/CONTRIBUTING saying
+
+```Avoid using ImGui internal since it would make the source fragile against internal changes in ImGui.```
+
+But dear ImGUI has the position of IME in ImGuiContext::PlatformImePos
+```ImGui::GetCurrentContext()->PlatformImePos```
+This ImGuiContext is defined in imgui_internal.h.
+Therefore, it is not possible to pull request my forked version.
+
 ![TextEditor](https://raw.githubusercontent.com/maildrop/DearImGui-with-IMM32/master/doc/ImGui-TextEditor-IMM-Candidate-List.png)
 
 # How to usage
