@@ -74,7 +74,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
   // snprintf 等が wide-multibyte 変換で使うのでローケルの設定は必要
   // ただし windows では mingw の gcc は、ローケルが Cローケルしか受け付けないのでこれは、Visual C++ ぐらいしか使えない
   // (mingw の 仕様のミスなので、当方では修正できません）
-  std::locale::global( std::locale("") ); 
+  (void)std::locale::global( std::locale("") ); 
     
   common_control_initialize();
 
