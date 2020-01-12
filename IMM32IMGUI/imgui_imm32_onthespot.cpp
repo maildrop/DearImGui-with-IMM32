@@ -156,7 +156,18 @@ ImGUIIMMCommunication::operator()()
           int i = 0; // for の最後で、i をインクリメントしているので、注意 
           for( const char* &listbox_item : listbox_items ){
             if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
+
               /* candidate list selection */
+
+              if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
+                  !ImGui::IsAnyItemActive () &&
+                  !ImGui::IsMouseClicked (0)) {
+                if (lastTextInputFocusId && lastTextInputNavId) {
+                  ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
+                  ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+                }
+              }
+
               /*
                 ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
                 Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
@@ -175,21 +186,6 @@ ImGUIIMMCommunication::operator()()
                 これを根拠に SendKey を利用したコードを作成する。
               */
               {
-                if (candidate_selection != i) {
-                  const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
-                  const size_t nNumToHit = abs (candidate_selection - i);
-                  for (size_t hit = 0; hit < nNumToHit; ++hit) {
-                    keybd_event (nVirtualKey, 0, 0, 0);
-                    keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
-                  }
-                  // Do this to close the candidate window without ending composition.
-                  keybd_event (VK_RIGHT, 0, 0, 0);
-                  keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-                  
-                  keybd_event (VK_LEFT, 0, 0, 0);
-                  keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
-                }
-                
                 /*
                   これで、選択された変換候補が末尾の場合は確定、
                   そうでない場合は、次の変換文節を選択させたいのであるが、
@@ -197,18 +193,21 @@ ImGUIIMMCommunication::operator()()
                   この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
                   WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
                 */
-                this->request_candidate_list_str_commit = true;
-
-              }
-              
-              if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
-                  !ImGui::IsAnyItemActive () &&
-                  !ImGui::IsMouseClicked (0)) {
-                if (lastTextInputFocusId && lastTextInputNavId) {
-                  ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
-                  ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+                if (candidate_selection == i) {
+                  /* 確定動作 */
+                  OutputDebugStringW (L"complete\n");
+                  this->request_candidate_list_str_commit = 1;
+                }else{
+                  const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
+                  const size_t nNumToHit = abs (candidate_selection - i);
+                  for (size_t hit = 0; hit < nNumToHit; ++hit) {
+                    keybd_event (nVirtualKey, 0, 0, 0);
+                    keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
+                  }
+                  this->request_candidate_list_str_commit = (int)nNumToHit;
                 }
               }
+              
             }
             ++i;
           }
@@ -511,7 +510,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     std::unique_ptr<char[]> utf8buf{ new char[require_byte] };
 
                     const int conversion_result =
-                      WideCharToMultiByte (CP_UTF8, 0, arg.c_str (), -1, utf8buf.get (), require_byte, NULL, NULL);
+                    WideCharToMultiByte (CP_UTF8, 0, arg.c_str (), -1, utf8buf.get (), require_byte, NULL, NULL);
                     if (conversion_result == 0) {
                       const DWORD lastError = GetLastError ();
                       (void)(lastError);
@@ -554,10 +553,6 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         VERIFY( ImmReleaseContext ( hWnd , hImc ) );
       }
 
-      if (comm.request_candidate_list_str_commit) {
-        comm.request_candidate_list_str_commit = false;
-        PostMessage (hWnd, WM_APP + 200, 0, 0);
-      }
 
     } // end of WM_IME_COMPOSITION
 
@@ -640,6 +635,15 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
             VERIFY( ImmReleaseContext ( hWnd , hImc ) );
           }
         }
+
+        IM_ASSERT (0 <= comm.request_candidate_list_str_commit );
+        if (comm.request_candidate_list_str_commit) {
+          if( comm.request_candidate_list_str_commit == 1){
+            PostMessage (hWnd, WM_APP + 200, 0, 0);
+          }
+          --(comm.request_candidate_list_str_commit);
+        }
+
         break;
       case IMN_CLOSECANDIDATE:
         {
@@ -663,7 +667,14 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
     {
       if (!static_cast<bool>(comm.comp_unconv_utf8) ||
           '\0' == *(comm.comp_unconv_utf8.get ())) {
-        /* There is probably no unconverted string after the conversion target. */
+        /* 
+           There is probably no unconverted string after the conversion target.  
+           However, since there is now a cursor operation in the
+           keyboard buffer, the confirmation operation needs to be performed
+           after the cursor operation is completed.  For this purpose, an enter
+           key, which is a decision operation, is added to the end of the
+           keyboard buffer.
+        */
 #if 0
         /*
           Here, the expected behavior is to perform the conversion completion
@@ -681,8 +692,19 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
           VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
           VERIFY (ImmReleaseContext (hWnd, hImc));
         }
+#else
+        keybd_event (VK_RETURN, 0, 0, 0);
+        keybd_event (VK_RETURN, 0, KEYEVENTF_KEYUP, 0);
 #endif
       } else {
+        /* Do this to close the candidate window without ending composition. */
+        /*
+          keybd_event (VK_RIGHT, 0, 0, 0);
+          keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+        
+          keybd_event (VK_LEFT, 0, 0, 0);
+          keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
+        */
         /* 
            Since there is an unconverted string after the conversion
            target, press the right key of the keyboard to convert the
