@@ -86,7 +86,9 @@ namespace imgex {
       if (!hImc) {
         VERIFY_ASSERT (NULL == hImc || !"window property dose not have HIMC");
         VERIFY (hImc = ImmAssociateContext (hWnd, nullptr));
-        VERIFY (SetProp (hWnd, imm_associate_property_name (), hImc));
+        if (hImc) {
+          VERIFY (SetProp (hWnd, imm_associate_property_name (), hImc));
+        }
       }
       return true;
     }
@@ -94,7 +96,9 @@ namespace imgex {
   }
 
   inline bool imm_associate_context_cleanup (HWND const hWnd) {
-    if (IsWindow (hWnd)) {
+    VERIFY_ASSERT (NULL != hWnd);
+    VERIFY_ASSERT (IsWindow (hWnd));
+    if (hWnd) {
       HIMC const hImc = reinterpret_cast<HIMC>(RemoveProp (hWnd, imm_associate_property_name ()));
       if (hImc) {
         VERIFY (nullptr == ImmAssociateContext (hWnd, hImc));
