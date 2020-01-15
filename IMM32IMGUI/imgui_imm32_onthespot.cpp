@@ -629,6 +629,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
                     }
                   }
 #endif /* for IMM candidate window debug END */
+
                 }
               }
             }
@@ -639,7 +640,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
         IM_ASSERT (0 <= comm.request_candidate_list_str_commit );
         if (comm.request_candidate_list_str_commit) {
           if( comm.request_candidate_list_str_commit == 1){
-            PostMessage (hWnd, WM_APP + 200, 0, 0);
+            VERIFY(PostMessage (hWnd, WM_IMGUI_IMM32_COMMAND, WM_IMGUI_IMM32_COMMAND_COMPOSITION_COMPLETE , 0));
           }
           --(comm.request_candidate_list_str_commit);
         }
@@ -663,55 +664,65 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
   case WM_INPUTLANGCHANGE:
     return ::DefWindowProc (hWnd, uMsg, wParam, lParam);
 
-  case (WM_APP + 200):
+  case WM_IMGUI_IMM32_COMMAND:
     {
-      if (!static_cast<bool>(comm.comp_unconv_utf8) ||
-          '\0' == *(comm.comp_unconv_utf8.get ())) {
-        /* 
-           There is probably no unconverted string after the conversion target.  
-           However, since there is now a cursor operation in the
-           keyboard buffer, the confirmation operation needs to be performed
-           after the cursor operation is completed.  For this purpose, an enter
-           key, which is a decision operation, is added to the end of the
-           keyboard buffer.
+      switch( wParam ){
+      case WM_IMGUI_IMM32_COMMAND_NOP: // NOP
+        return 1;
+      case WM_IMGUI_IMM32_COMMAND_SUBCLASSIFY:
+        return imgex::imm_associate_context_disable( hWnd );
+      case WM_IMGUI_IMM32_COMMAND_COMPOSITION_COMPLETE:
+        if (!static_cast<bool>(comm.comp_unconv_utf8) ||
+            '\0' == *(comm.comp_unconv_utf8.get ())) {
+          /* 
+             There is probably no unconverted string after the conversion target.  
+             However, since there is now a cursor operation in the
+             keyboard buffer, the confirmation operation needs to be performed
+             after the cursor operation is completed.  For this purpose, an enter
+             key, which is a decision operation, is added to the end of the
+             keyboard buffer.
         */
 #if 0
-        /*
-          Here, the expected behavior is to perform the conversion completion
-          operation. 
-          However, there is a bug that the TextInput loses the focus
-          and the conversion result is lost when the conversion
-          complete operation is performed.
-          
-          To work around this bug, disable it.
-          This is because the movement of the focus of the widget and
-          the accompanying timing are complicated relationships.
-        */
-        HIMC const hImc = ImmGetContext (hWnd);
-        if (hImc) {
-          VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
-          VERIFY (ImmReleaseContext (hWnd, hImc));
-        }
+          /*
+            Here, the expected behavior is to perform the conversion completion
+            operation. 
+            However, there is a bug that the TextInput loses the focus
+            and the conversion result is lost when the conversion
+            complete operation is performed.
+            
+            To work around this bug, disable it.
+            This is because the movement of the focus of the widget and
+            the accompanying timing are complicated relationships.
+          */
+          HIMC const hImc = ImmGetContext (hWnd);
+          if (hImc) {
+            VERIFY (ImmNotifyIME (hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
+            VERIFY (ImmReleaseContext (hWnd, hImc));
+          }
 #else
-        keybd_event (VK_RETURN, 0, 0, 0);
-        keybd_event (VK_RETURN, 0, KEYEVENTF_KEYUP, 0);
+          keybd_event (VK_RETURN, 0, 0, 0);
+          keybd_event (VK_RETURN, 0, KEYEVENTF_KEYUP, 0);
 #endif
-      } else {
-        /* Do this to close the candidate window without ending composition. */
-        /*
+        } else {
+          /* Do this to close the candidate window without ending composition. */
+          /*
+            keybd_event (VK_RIGHT, 0, 0, 0);
+            keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+            
+            keybd_event (VK_LEFT, 0, 0, 0);
+            keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
+          */
+          /* 
+             Since there is an unconverted string after the conversion
+             target, press the right key of the keyboard to convert the
+             next clause to IME.
+          */
           keybd_event (VK_RIGHT, 0, 0, 0);
           keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-        
-          keybd_event (VK_LEFT, 0, 0, 0);
-          keybd_event (VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
-        */
-        /* 
-           Since there is an unconverted string after the conversion
-           target, press the right key of the keyboard to convert the
-           next clause to IME.
-        */
-        keybd_event (VK_RIGHT, 0, 0, 0);
-        keybd_event (VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+        }
+        return 1;
+      default:
+        break;
       }
     }
     return 1;
@@ -743,12 +754,13 @@ ImGUIIMMCommunication::subclassify_impl(HWND hWnd)
   if (::SetWindowSubclass(hWnd, ImGUIIMMCommunication::imm_communication_subClassProc,
                           reinterpret_cast<UINT_PTR>(ImGUIIMMCommunication::imm_communication_subClassProc),
                           reinterpret_cast<DWORD_PTR>(this))) {
-    HIMC hImc = ImmAssociateContext(hWnd, nullptr);
-    if (!::SetProp(hWnd, TEXT("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572"), (HANDLE)hImc)) {
-      assert(!"SetProp failed");
-      ImmAssociateContext(hWnd, hImc);
-    }
-    return TRUE;
+    /* 
+       I want to close IME once by calling imgex::imm_associate_context_disable()
+       
+       However, at this point, default IMM Context may not have been initialized by User32.dll yet.
+       Therefore, a strategy is to post the message and set the IMMContext after the message pump is turned on.
+     */
+    return PostMessage( hWnd, WM_IMGUI_IMM32_COMMAND , WM_IMGUI_IMM32_COMMAND_SUBCLASSIFY , 0u ) ;
   }
   return FALSE;
 }

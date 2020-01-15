@@ -93,22 +93,6 @@ namespace imgex {
     return false;
   }
 
-#if 0
-  inline bool imm_associate_context (HWND const hWnd, bool const value)
-  {
-    VERIFY_ASSERT (NULL != hWnd);
-    VERIFY_ASSERT (IsWindow (hWnd));
-    if (hWnd && IsWindow (hWnd)) {
-      if (value) {
-        return imm_associate_context_enable (hWnd);
-      } else {
-        return imm_associate_context_disable (hWnd);
-      }
-    }
-    return false;
-  }
-#endif
-
   inline bool imm_associate_context_cleanup (HWND const hWnd) {
     if (IsWindow (hWnd)) {
       HIMC const hImc = reinterpret_cast<HIMC>(RemoveProp (hWnd, imm_associate_property_name ()));

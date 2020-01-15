@@ -22,8 +22,26 @@
 #include <commctrl.h>
 #endif /* defined( _WIN32 ) */
 
+#if !defined( WM_IMGUI_IMM32_COMMAND_BEGIN )
+#define WM_IMGUI_IMM32_COMMAND_BEGIN (WM_APP+0x200)
+#endif /* !defined( WM_IMGUI_IMM32_COMMAND_BEGIN ) */
+
+
+
 struct ImGUIIMMCommunication{
 
+  enum{
+    WM_IMGUI_IMM32_COMMAND = WM_IMGUI_IMM32_COMMAND_BEGIN,
+    WM_IMGUI_IMM32_END
+  };
+
+  enum{
+    WM_IMGUI_IMM32_COMMAND_NOP = 0u,
+    WM_IMGUI_IMM32_COMMAND_SUBCLASSIFY,
+    WM_IMGUI_IMM32_COMMAND_COMPOSITION_COMPLETE,
+    WM_IMGUI_IMM32_COMMAND_CLEANUP
+  };
+  
   struct IMMCandidateList{
     std::vector<std::string> list_utf8;
     std::vector<std::string>::size_type selection;
