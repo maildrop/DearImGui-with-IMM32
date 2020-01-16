@@ -343,3 +343,8 @@ healthchecksdb
 
 **/imgui.ini
 vcpkg
+
+# Gnu global tag files.
+GTAGS
+GRTAGS
+GPATH
