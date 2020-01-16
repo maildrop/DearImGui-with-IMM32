@@ -250,12 +250,14 @@ ImGUIIMMCommunication::operator()()
   */
   if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
     if (io.ImeWindowHandle) {
-      VERIFY(imgex::imm_associate_context_disable(static_cast<HWND>(io.ImeWindowHandle)));
+      IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
+      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle) , nullptr , IACE_IGNORENOCONTEXT ));
     }
   }
   if (io.WantTextInput) {
     if (io.ImeWindowHandle) {
-      VERIFY(imgex::imm_associate_context_enable(static_cast<HWND>(io.ImeWindowHandle)));
+      IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
+      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle), nullptr , IACE_DEFAULT));
     }
   }
 
@@ -349,8 +351,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , W
   switch( uMsg ){
   case WM_DESTROY:
     {
-      imgex::imm_associate_context_cleanup(hWnd);
-
+      VERIFY( ImmAssociateContextEx (hWnd, nullptr , IACE_DEFAULT) );
       if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
         assert(!"RemoveWindowSubclass() failed\n");
       }
@@ -670,7 +671,14 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
       case WM_IMGUI_IMM32_COMMAND_NOP: // NOP
         return 1;
       case WM_IMGUI_IMM32_COMMAND_SUBCLASSIFY:
-        return imgex::imm_associate_context_disable( hWnd );
+        {
+          ImGuiIO& io = ImGui::GetIO(); 
+          if( io.ImeWindowHandle ){
+            IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
+            VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle) , nullptr , IACE_IGNORENOCONTEXT ));
+          }
+        }
+        return 1;
       case WM_IMGUI_IMM32_COMMAND_COMPOSITION_COMPLETE:
         if (!static_cast<bool>(comm.comp_unconv_utf8) ||
             '\0' == *(comm.comp_unconv_utf8.get ())) {
@@ -681,7 +689,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc_implement( HWND hWnd , UIN
              after the cursor operation is completed.  For this purpose, an enter
              key, which is a decision operation, is added to the end of the
              keyboard buffer.
-        */
+          */
 #if 0
           /*
             Here, the expected behavior is to perform the conversion completion
@@ -759,7 +767,7 @@ ImGUIIMMCommunication::subclassify_impl(HWND hWnd)
        
        However, at this point, default IMM Context may not have been initialized by User32.dll yet.
        Therefore, a strategy is to post the message and set the IMMContext after the message pump is turned on.
-     */
+    */
     return PostMessage( hWnd, WM_IMGUI_IMM32_COMMAND , WM_IMGUI_IMM32_COMMAND_SUBCLASSIFY , 0u ) ;
   }
   return FALSE;

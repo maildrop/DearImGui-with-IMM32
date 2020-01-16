@@ -56,56 +56,6 @@ namespace imgex {
   {
     return static_cast<require_t>(implements::composite_flags_0 (tail ...));
   }
-
-  static inline constexpr const TCHAR* imm_associate_property_name ()
-  {
-    return TEXT ("IMM32-InputContext-3bd72cfe-c271-4071-a440-1677a5057572");
-  }
-
-  inline bool imm_associate_context_enable (HWND const hWnd)
-  {
-    VERIFY_ASSERT (NULL != hWnd);
-    VERIFY_ASSERT (IsWindow (hWnd));
-    if (hWnd) {
-      HIMC const hImc = reinterpret_cast<HIMC>(GetProp (hWnd, imm_associate_property_name ()));
-      if (hImc) {
-        VERIFY (NULL == ImmAssociateContext (hWnd, hImc));
-        VERIFY (SetProp (hWnd, imm_associate_property_name (), nullptr));
-      }
-      return true;
-    }
-    return false;
-  }
-
-  inline bool imm_associate_context_disable (HWND const hWnd)
-  {
-    VERIFY_ASSERT (NULL != hWnd);
-    VERIFY_ASSERT (IsWindow (hWnd));
-    if (hWnd) {
-      HIMC hImc = reinterpret_cast<HIMC>(GetProp (hWnd, imm_associate_property_name ()));
-      if (!hImc) {
-        VERIFY_ASSERT (NULL == hImc || !"window property dose not have HIMC");
-        VERIFY (hImc = ImmAssociateContext (hWnd, nullptr));
-        if (hImc) {
-          VERIFY (SetProp (hWnd, imm_associate_property_name (), hImc));
-        }
-      }
-      return true;
-    }
-    return false;
-  }
-
-  inline bool imm_associate_context_cleanup (HWND const hWnd) {
-    VERIFY_ASSERT (NULL != hWnd);
-    VERIFY_ASSERT (IsWindow (hWnd));
-    if (hWnd) {
-      HIMC const hImc = reinterpret_cast<HIMC>(RemoveProp (hWnd, imm_associate_property_name ()));
-      if (hImc) {
-        VERIFY (nullptr == ImmAssociateContext (hWnd, hImc));
-      }
-    }
-    return true;
-  }
 }
 
 #endif /* defined( __cplusplus ) */
