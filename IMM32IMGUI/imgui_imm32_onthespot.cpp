@@ -58,177 +58,180 @@ ImGUIIMMCommunication::operator()()
       }
     }
   }
-  ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
 
   ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f); // IME Candidate List Window position.
-  if (ImGui::Begin("IME Composition Window", &(this->is_open),
-                   ImGuiWindowFlags_Tooltip |
-                   ImGuiWindowFlags_NoNav |
-                   ImGuiWindowFlags_NoDecoration |
-                   ImGuiWindowFlags_NoInputs |
-                   ImGuiWindowFlags_AlwaysAutoResize |
-                   ImGuiWindowFlags_NoSavedSettings)) {
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f, 1.0f, 0.1875f, 1.0f));
-    ImGui::Text(static_cast<bool>(comp_conved_utf8) ? comp_conved_utf8.get() : "");
-    ImGui::PopStyleColor();
-
-    if (static_cast<bool>(comp_target_utf8)) {
-      ImGui::SameLine(0.0f, 0.0f);
-      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f));
-
-      target_screen_pos = ImGui::GetCursorScreenPos();
-      target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
-
-      ImGui::Text(static_cast<bool>(comp_target_utf8) ? comp_target_utf8.get() : "");
-      ImGui::PopStyleColor();
-    }
-    if (static_cast<bool>(comp_unconv_utf8)) {
-      ImGui::SameLine(0.0f, 0.0f);
+  if( this->is_open ){
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f,0.0f));
+    if (ImGui::Begin("IME Composition Window", nullptr,
+                     ImGuiWindowFlags_Tooltip |
+                     ImGuiWindowFlags_NoNav |
+                     ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_NoInputs |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings)) {
+      
       ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f, 1.0f, 0.1875f, 1.0f));
-      ImGui::Text(static_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
+      ImGui::Text(static_cast<bool>(comp_conved_utf8) ? comp_conved_utf8.get() : "");
       ImGui::PopStyleColor();
-    }
-    ImGui::SameLine();
-    /*
-      ImGui::Text("%u %u", 
-      candidate_window_root_id ,
-      ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
-    */
-    ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-  }
-  ImGui::End();
-  ImGui::PopStyleVar();
-    
-  /* Draw Candidate List */
-  if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
       
-    std::vector<const char*> listbox_items ={};
-      
-    /* ページに分割します */
-    // TODO:candidate_window_num の値に注意 0 除算の可能性がある。
-    IM_ASSERT( candidate_window_num );
-    int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
-    int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
-      
-    auto begin_ite = std::begin(candidate_list.list_utf8);
-    std::advance(begin_ite, candidate_page * candidate_window_num);
-    auto end_ite = begin_ite;
-    {
-      auto the_end = std::end(candidate_list.list_utf8);
-      for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
-        std::advance(end_ite, 1);
+      if (static_cast<bool>(comp_target_utf8)) {
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f));
+
+        target_screen_pos = ImGui::GetCursorScreenPos();
+        target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
+
+        ImGui::Text(static_cast<bool>(comp_target_utf8) ? comp_target_utf8.get() : "");
+        ImGui::PopStyleColor();
       }
-    }
-      
-    std::for_each( begin_ite , end_ite , 
-                   [&](auto &item){
-                     listbox_items.push_back( item.c_str() );
-                   });
-
-    /* もし candidate window が画面の外に出ることがあるのならば、上に表示する */
-    const float candidate_window_height =
-      (( ImGui::GetStyle().FramePadding.y * 2) +
-       (( ImGui::GetTextLineHeightWithSpacing() ) * ((int)std::size( listbox_items ) +2 )));
-
-    if( io.DisplaySize.y < (target_screen_pos.y + candidate_window_height) ){
-      target_screen_pos.y -=
-        ImGui::GetTextLineHeightWithSpacing() + candidate_window_height;
-    }
-      
-    ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
-
-    if( ImGui::Begin( "##Overlay-IME-Candidate-List-Window" ,
-                      &show_ime_candidate_list ,
-                      ImGuiWindowFlags_NoMove |
-                      ImGuiWindowFlags_NoDecoration |
-                      ImGuiWindowFlags_AlwaysAutoResize |
-                      ImGuiWindowFlags_NoInputs | 
-                      ImGuiWindowFlags_NoSavedSettings |
-                      ImGuiWindowFlags_NoFocusOnAppearing |
-                      ImGuiWindowFlags_NoNav ) ){
-      if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
-                                static_cast<int>(std::size( listbox_items )),
-                                static_cast<int>(std::size( listbox_items )))){
-          
-        int i = 0; // for の最後で、i をインクリメントしているので、注意 
-        for( const char* &listbox_item : listbox_items ){
-          if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
-
-            /* candidate list selection */
-
-            if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
-                !ImGui::IsAnyItemActive () &&
-                !ImGui::IsMouseClicked (0)) {
-              if (lastTextInputFocusId && lastTextInputNavId) {
-                ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
-                ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
-              }
-            }
-
-            /*
-              ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
-              Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
-              @see IMM32互換性情報.doc from Microsoft
-                
-              そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
-              https://github.com/microsoft/DXUT で確認出来る
-              当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
-              を確認したところ
-                
-              L.380から で Candidate List をクリックしたときのコードがある
-                
-              どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
-              （なんということ？！）
-                
-              これを根拠に SendKey を利用したコードを作成する。
-            */
-            {
-              /*
-                これで、選択された変換候補が末尾の場合は確定、
-                そうでない場合は、次の変換文節を選択させたいのであるが、
-                keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
-                この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
-                WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
-              */
-              if (candidate_selection == i) {
-                /* 確定動作 */
-                OutputDebugStringW (L"complete\n");
-                this->request_candidate_list_str_commit = 1;
-              }else{
-                const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
-                const size_t nNumToHit = abs (candidate_selection - i);
-                for (size_t hit = 0; hit < nNumToHit; ++hit) {
-                  keybd_event (nVirtualKey, 0, 0, 0);
-                  keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
-                }
-                this->request_candidate_list_str_commit = (int)nNumToHit;
-              }
-            }
-              
-          }
-          ++i;
-        }
-        ImGui::ListBoxFooter ();
+      if (static_cast<bool>(comp_unconv_utf8)) {
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f, 1.0f, 0.1875f, 1.0f));
+        ImGui::Text(static_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
+        ImGui::PopStyleColor();
       }
-      ImGui::Text("%d/%d",
-                  candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
-#if defined( _DEBUG )
       ImGui::SameLine();
-      ImGui::TextColored( ImVec4(1.0f, 0.8f, 0.0f, 1.0f) , "%s",
-# if defined( UNICODE )
-                          u8"DEBUG (UNICODE)"
-# else 
-                          u8"DEBUG (MBCS)"
-# endif /* defined( UNICODE ) */
-                          );
-#endif /* defined( DEBUG ) */
-      // #1 ここで作るウィンドウがフォーカスを持ったときには、ウィンドウの位置を変更してはいけない。
-      candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
+      /*
+        ImGui::Text("%u %u", 
+        candidate_window_root_id ,
+        ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
+      */
       ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
     }
     ImGui::End();
+    ImGui::PopStyleVar();
+    
+    /* Draw Candidate List */
+    if( show_ime_candidate_list && !candidate_list.list_utf8.empty()){
+      
+      std::vector<const char*> listbox_items ={};
+      
+      /* ページに分割します */
+      // TODO:candidate_window_num の値に注意 0 除算の可能性がある。
+      IM_ASSERT( candidate_window_num );
+      int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
+      int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
+      
+      auto begin_ite = std::begin(candidate_list.list_utf8);
+      std::advance(begin_ite, candidate_page * candidate_window_num);
+      auto end_ite = begin_ite;
+      {
+        auto the_end = std::end(candidate_list.list_utf8);
+        for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
+          std::advance(end_ite, 1);
+        }
+      }
+      
+      std::for_each( begin_ite , end_ite , 
+                     [&](auto &item){
+                       listbox_items.push_back( item.c_str() );
+                     });
+
+      /* もし candidate window が画面の外に出ることがあるのならば、上に表示する */
+      const float candidate_window_height =
+        (( ImGui::GetStyle().FramePadding.y * 2) +
+         (( ImGui::GetTextLineHeightWithSpacing() ) * ((int)std::size( listbox_items ) +2 )));
+
+      if( io.DisplaySize.y < (target_screen_pos.y + candidate_window_height) ){
+        target_screen_pos.y -=
+          ImGui::GetTextLineHeightWithSpacing() + candidate_window_height;
+      }
+      
+      ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
+
+      if( ImGui::Begin( "##Overlay-IME-Candidate-List-Window" ,
+                        &show_ime_candidate_list ,
+                        ImGuiWindowFlags_NoMove |
+                        ImGuiWindowFlags_NoDecoration |
+                        ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiWindowFlags_NoInputs | 
+                        ImGuiWindowFlags_NoSavedSettings |
+                        ImGuiWindowFlags_NoFocusOnAppearing |
+                        ImGuiWindowFlags_NoNav ) ){
+        if( ImGui::ListBoxHeader( "##IMECandidateListWindow" ,
+                                  static_cast<int>(std::size( listbox_items )),
+                                  static_cast<int>(std::size( listbox_items )))){
+          
+          int i = 0; // for の最後で、i をインクリメントしているので、注意 
+          for( const char* &listbox_item : listbox_items ){
+            if (ImGui::Selectable (listbox_item, (i == candidate_selection))) {
+
+              /* candidate list selection */
+
+              if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
+                  !ImGui::IsAnyItemActive () &&
+                  !ImGui::IsMouseClicked (0)) {
+                if (lastTextInputFocusId && lastTextInputNavId) {
+                  ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
+                  ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+                }
+              }
+
+              /*
+                ImmNotifyIME (hImc, NI_SELECTCANDIDATESTR, 0, candidate_page* candidate_window_num + i)); をしたいのだが、
+                Vista 以降 ImmNotifyIME は NI_SELECTCANDIDATESTR はサポートされない。
+                @see IMM32互換性情報.doc from Microsoft
+                
+                そこで、DXUTguiIME.cpp (かつて使われていた DXUT の gui IME 処理部 現在は、deprecated 扱いで、
+                https://github.com/microsoft/DXUT で確認出来る
+                当該のコードは、https://github.com/microsoft/DXUT/blob/master/Optional/DXUTguiIME.cpp )
+                を確認したところ
+                
+                L.380から で Candidate List をクリックしたときのコードがある
+                
+                どうしているかというと SendKey で、矢印カーソルキーを送ることで、Candidate Listからの選択を行っている。
+                （なんということ？！）
+                
+                これを根拠に SendKey を利用したコードを作成する。
+              */
+              {
+                /*
+                  これで、選択された変換候補が末尾の場合は確定、
+                  そうでない場合は、次の変換文節を選択させたいのであるが、
+                  keybd_event で状態を送っているので、PostMessage でその処理を遅らせる
+                  この request_candidate_list_str_commit は、 WM_IME_COMPOSITION の最後でチェックされ
+                  WM_APP + 200 を PostMessage して、そこで実際の確定動作が行われる。
+                */
+                if (candidate_selection == i) {
+                  /* 確定動作 */
+                  OutputDebugStringW (L"complete\n");
+                  this->request_candidate_list_str_commit = 1;
+                }else{
+                  const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
+                  const size_t nNumToHit = abs (candidate_selection - i);
+                  for (size_t hit = 0; hit < nNumToHit; ++hit) {
+                    keybd_event (nVirtualKey, 0, 0, 0);
+                    keybd_event (nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
+                  }
+                  this->request_candidate_list_str_commit = (int)nNumToHit;
+                }
+              }
+              
+            }
+            ++i;
+          }
+          ImGui::ListBoxFooter ();
+        }
+        ImGui::Text("%d/%d",
+                    candidate_list.selection + 1, static_cast<int>(std::size(candidate_list.list_utf8)));
+#if defined( _DEBUG )
+        ImGui::SameLine();
+        ImGui::TextColored( ImVec4(1.0f, 0.8f, 0.0f, 1.0f) , "%s",
+# if defined( UNICODE )
+                            u8"DEBUG (UNICODE)"
+# else 
+                            u8"DEBUG (MBCS)"
+# endif /* defined( UNICODE ) */
+                            );
+#endif /* defined( DEBUG ) */
+        // #1 ここで作るウィンドウがフォーカスを持ったときには、ウィンドウの位置を変更してはいけない。
+        candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
+        ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+      }
+      ImGui::End();
+    }
   }
 
   /*
