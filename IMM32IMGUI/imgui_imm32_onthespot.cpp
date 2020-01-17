@@ -251,13 +251,24 @@ ImGUIIMMCommunication::operator()()
   if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
     if (io.ImeWindowHandle) {
       IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
-      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle) , nullptr , IACE_IGNORENOCONTEXT ));
+      VERIFY(ImmAssociateContext (static_cast<HWND>(io.ImeWindowHandle) , HIMC(0)  ));
     }
   }
   if (io.WantTextInput) {
     if (io.ImeWindowHandle) {
       IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
-      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle), nullptr , IACE_DEFAULT));
+      /*
+        The second argument of ImmAssociateContextEx is
+        Changed from IN to _In_ between 10.0.10586.0-Windows 10 and 10.0.14393.0-Windows.
+        
+        https://abi-laboratory.pro/compatibility/Windows_10_1511_10586.494_to_Windows_10_1607_14393.0/x86_64/headers_diff/imm32.dll/diff.html
+        
+        This is strange, but HIMC is probably not zero because this change was intentional. 
+        However, the document states that HIMC is ignored if the flag IACE_DEFAULT is used.
+        
+        https://docs.microsoft.com/en-us/windows/win32/api/immdev/nf-immdev-immassociatecontextex        
+      */
+      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle), HIMC(1) , IACE_DEFAULT));
     }
   }
 
@@ -351,7 +362,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , W
   switch( uMsg ){
   case WM_DESTROY:
     {
-      VERIFY( ImmAssociateContextEx (hWnd, nullptr , IACE_DEFAULT) );
+      VERIFY( ImmAssociateContextEx (hWnd, HIMC(1) , IACE_DEFAULT) );
       if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
         IM_ASSERT(!"RemoveWindowSubclass() failed\n");
       }
