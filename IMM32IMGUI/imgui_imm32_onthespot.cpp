@@ -266,9 +266,11 @@ ImGUIIMMCommunication::operator()()
         This is strange, but HIMC is probably not zero because this change was intentional. 
         However, the document states that HIMC is ignored if the flag IACE_DEFAULT is used.
         
-        https://docs.microsoft.com/en-us/windows/win32/api/immdev/nf-immdev-immassociatecontextex        
+        https://docs.microsoft.com/en-us/windows/win32/api/immdev/nf-immdev-immassociatecontextex  
+
+        Passing HIMC appropriately when using IACE_DEFAULT causes an error and returns to 0
       */
-      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle), HIMC(1) , IACE_DEFAULT));
+      VERIFY(ImmAssociateContextEx (static_cast<HWND>(io.ImeWindowHandle), HIMC(0) , IACE_DEFAULT));
     }
   }
 
@@ -362,7 +364,7 @@ ImGUIIMMCommunication::imm_communication_subClassProc( HWND hWnd , UINT uMsg , W
   switch( uMsg ){
   case WM_DESTROY:
     {
-      VERIFY( ImmAssociateContextEx (hWnd, HIMC(1) , IACE_DEFAULT) );
+      VERIFY( ImmAssociateContextEx (hWnd, HIMC(0) , IACE_DEFAULT) );
       if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
         IM_ASSERT(!"RemoveWindowSubclass() failed\n");
       }
