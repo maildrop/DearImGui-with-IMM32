@@ -2,10 +2,7 @@
 #include <Windows.h>
 #include <commctrl.h>
 
-#include <iostream>
-
 #include "imgui.h"
-#include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl2.h"
 
@@ -20,7 +17,9 @@
 #include "imgui_imm32_onthespot_sdl.h"
 #endif /* defined( _WIN32 ) */
 
+#include "imgex.hpp"
 
+#include <iostream>
 #include <locale>
 
 /** initialize windows common controls. */

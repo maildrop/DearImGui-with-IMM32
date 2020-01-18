@@ -1,27 +1,30 @@
-﻿#include <iostream>
+﻿#include <tchar.h>
+#include <Windows.h>
+#include <commctrl.h>
 
 #include "imgui.h"
-#include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl2.h"
+
+#include "TextEditor.h"
 
 #include <SDL.h>
 #include <SDL_syswm.h>
 #include <SDL_opengl.h>
 
-#include <Windows.h>
-#include <commctrl.h>
-
 #include "glyph-ranges-ja.h"
 
-#include "TextEditor.h"
-
-#if defined( _WIN32 )
+#if defined (_WIN32)
 #include "imgui_imm32_onthespot.h"
 #include "imgui_imm32_onthespot_sdl.h"
 #endif /* defined( _WIN32 ) */
 
+#include "imgex.hpp"
+
+#include <iostream>
 #include <locale>
+
+#include "imgui_internal.h"
 
 /** コモンコントロールの初期化 */
 static int common_control_initialize();

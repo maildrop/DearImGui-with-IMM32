@@ -3,21 +3,21 @@
    author: TOGURO Mikito , mit@shalab.net
 */
 
-#include "imgex.hpp"
+
 
 #pragma once
 #if !defined( IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD )
 #define IMGUI_IMM32_ONTHESPOT_H_UUID_ccfbd514_0a94_4888_a8b8_f065c57c1e70_HEADER_GUARD 1
 
-#include <iostream>
+//#include <iostream>
 #include <memory>
 #include <vector>
-#include <algorithm>
 #include <utility>
 #include <string>
 #include <type_traits>
 
 #if defined( _WIN32 ) 
+#include <tchar.h>
 #include <Windows.h>
 #include <commctrl.h>
 #endif /* defined( _WIN32 ) */
@@ -25,8 +25,6 @@
 #if !defined( WM_IMGUI_IMM32_COMMAND_BEGIN )
 #define WM_IMGUI_IMM32_COMMAND_BEGIN (WM_APP+0x200)
 #endif /* !defined( WM_IMGUI_IMM32_COMMAND_BEGIN ) */
-
-
 
 struct ImGUIIMMCommunication{
 

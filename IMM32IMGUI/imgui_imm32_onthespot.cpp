@@ -7,11 +7,14 @@
 #include <windows.h>
 #include <commctrl.h>
 
+#include <algorithm> 
 #include <cassert>
 
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_imm32_onthespot.h"
+
+#include "imgex.hpp"
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
