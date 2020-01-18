@@ -239,7 +239,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                        ImGuiWindowFlags_NoNavInputs|
                        ImGuiWindowFlags_NoNavFocus )) {
  
-        ImGui::Text("Active id : %u , NavWindow : %x %d", ImGui::GetActiveID() , ImGui::GetCurrentContext()->NavWindow , ImGui::GetIO().WantTextInput);
+        ImGui::Text("Active id : %u , NavWindow : %x",
+                    ImGui::GetActiveID() ,
+                    ImGui::GetCurrentContext()->NavWindow );
+        ImGui::Text("%s" , (ImGui::GetIO().WantTextInput) ? u8"WantTextInput(true)" : u8"WantTextInput(false)");
         ImGui::Text("last Active:%u , NavWindow : %x ", lastTextInputFocusId, lastTextInputNavWindow);
         if (ImGui::ButtonEx("popup",ImVec2(0.0f,0.0f), ImGuiButtonFlags_NoNavFocus)) {
           /*
@@ -271,14 +274,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         if (ImGui::Button("hoge")) {
 
-
         }
         ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-            
 
-
+        static char str0[128] = "hello world";
+        ImGui::InputText( "input text", str0 , std::extent<decltype(str0)>::value );
+        
+        ImGui::End();
       }
-      ImGui::End();
     }
 
     auto cpos = editor.GetCursorPosition();
