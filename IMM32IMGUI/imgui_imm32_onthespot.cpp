@@ -25,37 +25,54 @@ ImGUIIMMCommunication::operator()()
 {
   ImGuiIO& io = ImGui::GetIO(); 
 
+  static ImVec2 window_pos = ImVec2();
+  static ImVec2 window_pos_pivot = ImVec2();
+
   /* 
      #1 Candidate List Window の位置に関する保持
      Candidate List をクリックしたときに、ウィンドウ位置を動かさない。
      クリック後に、TextInputを復帰させる処理
      see #1 
   */
-  static ImGuiID lastTextInputFocusId = 0;
-  static ImGuiID lastTextInputNavId = 0;
-  static ImGuiWindow* lastTextInputNavWindow = nullptr;
   static ImGuiID candidate_window_root_id = 0;
 
-  static ImVec2 window_pos = ImVec2();
-  static ImVec2 window_pos_pivot = ImVec2();
+  static ImGuiWindow* lastTextInputNavWindow = nullptr;
+  static ImGuiID lastTextInputActiveId = 0;
+  static ImGuiID lastTextInputFocusId = 0;
 
-  if ( candidate_window_root_id && 
-       ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u )== candidate_window_root_id ) ){
-    // 今Candidate Window をフォーカスしている。のでウィンドウ位置を操作しない。
-    ;
-  } else {
-    window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f, ImGui::GetCurrentContext()->PlatformImePos.y); // 
+  // Candidate Window をフォーカスしている時は Window の位置を操作しない 
+  if (!( candidate_window_root_id && 
+         ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u ) == candidate_window_root_id ) )){
+
+    window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImePos.x + 1.0f,
+                        ImGui::GetCurrentContext()->PlatformImePos.y); // 
     window_pos_pivot = ImVec2(0.0f, 0.0f);
     
-    ImGuiContext* const g = ImGui::GetCurrentContext();
-    IM_ASSERT( g || !"ImGui::GetCurrentContext() return nullptr.");
-    if( g ){
-      if ((g->WantTextInputNextFrame != -1) ? (g->WantTextInputNextFrame) : false) {
-        // mouse press してる間は、ActiveID が切り替わるので、
-        if (!ImGui::IsMouseClicked(0)) { // この条件アドホック過ぎ
-          lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
-          lastTextInputFocusId = ImGui::GetActiveID();
-          lastTextInputNavId = ImGui::GetFocusID();
+    const ImGuiContext* const currentContext = ImGui::GetCurrentContext() ;
+    IM_ASSERT( currentContext || !"ImGui::GetCurrentContext() return nullptr.");
+    if( currentContext ){
+      // mouse press してる間は、ActiveID が切り替わるので、
+      if ( !ImGui::IsMouseClicked(0) ) { 
+        if ( (currentContext->WantTextInputNextFrame != -1) ? (!!(currentContext->WantTextInputNextFrame)) : false) {
+          if( (!!currentContext->NavWindow) &&
+              (currentContext->NavWindow->RootWindow->ID != candidate_window_root_id) &&
+              (ImGui::GetActiveID() != lastTextInputActiveId) ){
+            OutputDebugStringW( L"update lastTextInputActiveId\n");
+            lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
+            lastTextInputActiveId = ImGui::GetActiveID();
+            lastTextInputFocusId = ImGui::GetFocusID();
+          }
+        }else{
+          if( lastTextInputActiveId != 0 ){
+            if( currentContext->WantTextInputNextFrame ){
+              OutputDebugStringW( L"update lastTextInputActiveId disabled\n");
+            }else{
+              OutputDebugStringW( L"update lastTextInputActiveId disabled update\n");
+            }
+          }
+          lastTextInputNavWindow = nullptr;
+          lastTextInputActiveId = 0;
+          lastTextInputFocusId = 0;
         }
       }
     }
@@ -94,8 +111,8 @@ ImGUIIMMCommunication::operator()()
         ImGui::Text(static_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
         ImGui::PopStyleColor();
       }
-      ImGui::SameLine();
       /*
+        ImGui::SameLine();
         ImGui::Text("%u %u", 
         candidate_window_root_id ,
         ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
@@ -165,9 +182,9 @@ ImGUIIMMCommunication::operator()()
               if (ImGui::IsWindowFocused (ImGuiFocusedFlags_RootAndChildWindows) &&
                   !ImGui::IsAnyItemActive () &&
                   !ImGui::IsMouseClicked (0)) {
-                if (lastTextInputFocusId && lastTextInputNavId) {
-                  ImGui::SetActiveID (lastTextInputFocusId, lastTextInputNavWindow);
-                  ImGui::SetFocusID (lastTextInputNavId, lastTextInputNavWindow);
+                if (lastTextInputActiveId && lastTextInputFocusId) {
+                  ImGui::SetActiveID (lastTextInputActiveId, lastTextInputNavWindow);
+                  ImGui::SetFocusID (lastTextInputFocusId, lastTextInputNavWindow);
                 }
               }
 
