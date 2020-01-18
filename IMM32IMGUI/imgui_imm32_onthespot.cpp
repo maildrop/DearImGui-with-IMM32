@@ -254,7 +254,7 @@ ImGUIIMMCommunication::operator()()
   if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
     if (io.ImeWindowHandle) {
       IM_ASSERT( IsWindow( static_cast<HWND>( io.ImeWindowHandle )));
-      VERIFY(ImmAssociateContext (static_cast<HWND>(io.ImeWindowHandle) , HIMC(0)  ));
+      (void)( ImmAssociateContext (static_cast<HWND>(io.ImeWindowHandle) , HIMC(0)  ));
     }
   }
   if (io.WantTextInput) {
